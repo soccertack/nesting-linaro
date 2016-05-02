@@ -224,4 +224,39 @@
 #define CPACR_EL1_FPEN		(3 << 20)
 #define CPACR_EL1_TTA		(1 << 28)
 
+/* el2 system regs */
+#define	ELR_EL2		0
+#define	SPSR_EL2	1
+#define	SP_EL2		2
+#define	AMAIR_EL2	3
+#define	MAIR_EL2	4
+#define	TCR_EL2		5
+#define	TTBR0_EL2	6
+#define	VTCR_EL2	7
+#define	VTTBR_EL2	8
+#define	VMPIDR_EL2	9
+#define	VPIDR_EL2	10	/* 10 */
+#define	MDCR_EL2	11
+#define	CNTHCTL_EL2	12
+#define	CNTHP_CTL_EL2	13
+#define	CNTHP_CVAL_EL2	14
+#define	CNTHP_TVAL_EL2	15
+#define	CNTVOFF_EL2	16
+#define	ACTLR_EL2	17
+#define	AFSR0_EL2	18
+#define	AFSR1_EL2	19
+#define	CPTR_EL2	20	/* 20 */
+#define	ESR_EL2		21
+#define	FAR_EL2		22
+#define	HACR_EL2	23
+#define	HCR_EL2		24
+#define	HPFAR_EL2	25
+#define	HSTR_EL2	26
+#define	RMR_EL2		27
+#define	RVBAR_EL2	28
+#define	SCTLR_EL2	29
+#define	TPIDR_EL2	30	/* 30 */
+#define	VBAR_EL2	31
+#define	NR_EL2_REGS	32
+
 #endif /* __ARM64_KVM_ARM_H__ */
