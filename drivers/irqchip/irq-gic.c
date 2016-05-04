@@ -1252,6 +1252,10 @@ static bool gic_check_eoimode(struct device_node *node, void __iomem **base)
 {
 	struct resource cpuif_res;
 
+#ifdef CONFIG_PV_EL2
+	return false;
+#endif
+
 	of_address_to_resource(node, 1, &cpuif_res);
 
 	if (!is_hyp_mode_available())
