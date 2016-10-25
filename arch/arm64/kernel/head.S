@@ -517,6 +517,12 @@ CPU_LE(	bic	x0, x0, #(3 << 24)	)	// Clear the EE and E0E bits for EL1
 	 */
 	mrs	x2, id_aa64mmfr1_el1
 	ubfx	x2, x2, #8, #4
+
+#ifdef CONFIG_PV_VHE
+	/* Emulate having VHE */
+	mov	x2, #1
+#endif
+
 #else
 	mov	x2, xzr
 #endif
