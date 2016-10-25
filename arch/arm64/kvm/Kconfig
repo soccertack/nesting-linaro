@@ -59,6 +59,12 @@ config PV_EL2
 	---help---
 	 Run KVM as a guest hypervisor via paravirtualization.
 
+config  PV_VHE
+	bool "Supports KVM/ARM running as a VHE-guest hypervisor via PV"
+	depends on PV_EL2
+	---help---
+	  Run KVM as a VHE guest hypervisor via paravirtualization.
+
 source drivers/vhost/Kconfig
 
 endif # VIRTUALIZATION
