@@ -78,7 +78,11 @@ static inline bool is_hyp_mode_mismatched(void)
 
 static inline bool is_kernel_in_hyp_mode(void)
 {
+#ifndef CONFIG_PV_VHE
 	return read_sysreg(CurrentEL) == CurrentEL_EL2;
+#else
+	return true;
+#endif
 }
 
 static inline bool has_vhe(void)
