@@ -68,10 +68,17 @@
 					 : : "rZ" (__val));		\
 	} while (0)
 
+/*
+ * If CONFIG_PV_VHE is set, then EL01, EL12 is not valid on ARMv8.0.
+ * To handle this, we just paravirtualize those register accesses
+ * to trap to EL2
+ */
+#ifndef CONFIG_PV_VHE
 #define read_sysreg_el0(r)	read_sysreg_elx(r, _EL0, _EL02)
 #define write_sysreg_el0(v,r)	write_sysreg_elx(v, r, _EL0, _EL02)
 #define read_sysreg_el1(r)	read_sysreg_elx(r, _EL1, _EL12)
 #define write_sysreg_el1(v,r)	write_sysreg_elx(v, r, _EL1, _EL12)
+#endif
 
 /* The VHE specific system registers and their encoding */
 #define sctlr_EL12              sys_reg(3, 5, 1, 0, 0)

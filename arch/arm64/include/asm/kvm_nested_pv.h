@@ -146,6 +146,21 @@ PV_CONST
 #define kvm_read_sysreg_el2(r) 	read_sysreg_pv(r##_el2)
 #define kvm_write_sysreg_el1(v, r)	write_sysreg_pv(v, r##_el1)
 #define kvm_write_sysreg_el2(v, r)	write_sysreg_pv(v, r##_el2)
+
+/*
+ * If CONFIG_PV_VHE is set, then EL02, EL12 is not valid on ARMv8.0.  To handle
+ * this, we just paravirtualize those register accesses to trap to EL2.
+ *
+ * FIXME: Note that we let the guest hypervisor access EL02 registers natively
+ * for now.
+ */
+#ifdef CONFIG_PV_VHE
+#define read_sysreg_el0(r)	read_sysreg(r##_el0)
+#define write_sysreg_el0(v,r)	write_sysreg(v, r##_el0)
+#define read_sysreg_el1(r)	read_sysreg_pv(r##_el1)
+#define write_sysreg_el1(v,r)	write_sysreg_pv(v, r##_el1)
+#endif
+
 #endif /* CONFIG_PV_EL2 */
 #endif /* __ASSEMBLY__ */
 

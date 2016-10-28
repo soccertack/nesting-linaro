@@ -128,6 +128,17 @@
 .equ .L__elr_el1,	(ENCODE_EL1_SYSREG(ELR_EL1))
 .equ .L__spsr_el1,	(ENCODE_EL1_SYSREG(SPSR_EL1))
 
+.equ .L__sctlr_el1,	(ENCODE_EL1_SYSREG(SCTLR_EL1))
+.equ .L__cpacr_el1 ,	(ENCODE_EL1_SYSREG(CPACR_EL1))
+.equ .L__ttbr0_el1,	(ENCODE_EL1_SYSREG(TTBR0_EL1))
+.equ .L__ttbr1_el1,	(ENCODE_EL1_SYSREG(TTBR1_EL1))
+.equ .L__tcr_el1,	(ENCODE_EL1_SYSREG(TCR_EL1))
+.equ .L__afsr0_el1,	(ENCODE_EL1_SYSREG(AFSR0_EL1))
+.equ .L__afsr1_el1,	(ENCODE_EL1_SYSREG(AFSR1_EL1))
+.equ .L__mair_el1,	(ENCODE_EL1_SYSREG(MAIR_EL1))
+.equ .L__contextidr_el1,	(ENCODE_EL1_SYSREG(CONTEXTIDR_EL1))
+.equ .L__amair_el1,	(ENCODE_EL1_SYSREG(AMAIR_EL1))
+
 /* TLBI instructions */
 .equ .L__ipas2e1is,	(ENCODE_TLBI_INSTR(IPAS2E1IS))
 .equ .L__vmalle1is,	(ENCODE_TLBI_INSTR(VMALLE1IS))
@@ -196,6 +207,16 @@
 ".equ .L__far_el1,"	__stringify(ENCODE_EL1_SYSREG(FAR_EL1))"\n"	\
 ".equ .L__elr_el1,"	__stringify(ENCODE_EL1_SYSREG(ELR_EL1))"\n"	\
 ".equ .L__spsr_el1,"	__stringify(ENCODE_EL1_SYSREG(SPSR_EL1))"\n"	\
+".equ .L__sctlr_el1,"	__stringify(ENCODE_EL1_SYSREG(SCTLR_EL1))"\n"	\
+".equ .L__cpacr_el1,"	__stringify(ENCODE_EL1_SYSREG(CPACR_EL1))"\n"	\
+".equ .L__ttbr0_el1,"	__stringify(ENCODE_EL1_SYSREG(TTBR0_EL1))"\n"	\
+".equ .L__ttbr1_el1,"	__stringify(ENCODE_EL1_SYSREG(TTBR1_EL1))"\n"	\
+".equ .L__tcr_el1,"	__stringify(ENCODE_EL1_SYSREG(TCR_EL1))"\n"	\
+".equ .L__afsr0_el1,"	__stringify(ENCODE_EL1_SYSREG(AFSR0_EL1))"\n"	\
+".equ .L__afsr1_el1,"	__stringify(ENCODE_EL1_SYSREG(AFSR1_EL1))"\n"	\
+".equ .L__mair_el1,"	__stringify(ENCODE_EL1_SYSREG(MAIR_EL1))"\n"	\
+".equ .L__contextidr_el1,"	__stringify(ENCODE_EL1_SYSREG(CONTEXTIDR_EL1))"\n"	\
+".equ .L__amair_el1,"	__stringify(ENCODE_EL1_SYSREG(AMAIR_EL1))"\n"	\
 "\n"									\
 ".equ .L__ipas2e1is,"	__stringify(ENCODE_TLBI_INSTR(IPAS2E1IS))"\n"	\
 ".equ .L__vmalle1is,"	__stringify(ENCODE_TLBI_INSTR(VMALLE1IS))"\n"	\
