@@ -4,8 +4,9 @@
 #include <asm/kvm_nested_pv_encoding.h>
 #include "sys_regs.h"
 
-int emulate_tlbi(struct kvm_vcpu *vcpu, struct sys_reg_params *params);
 int kvm_handle_eret(struct kvm_vcpu *vcpu, struct kvm_run *run);
+
+int handle_pv(struct kvm_vcpu *vcpu);
 
 #ifdef __ASSEMBLY__
 #ifndef CONFIG_PV_EL2
