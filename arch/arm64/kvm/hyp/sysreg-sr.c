@@ -58,15 +58,15 @@ static void __hyp_text __sysreg_save_state(struct kvm_cpu_context *ctxt)
 	ctxt->sys_regs[AFSR1_EL1]	= read_sysreg_el1(afsr1);
 	ctxt->sys_regs[FAR_EL1]		= read_sysreg_el1(far);
 	ctxt->sys_regs[MAIR_EL1]	= read_sysreg_el1(mair);
-	ctxt->sys_regs[VBAR_EL1]	= read_sysreg_el1(vbar);
+	ctxt->sys_regs[VBAR_EL1]	= kvm_read_sysreg_el1(vbar);
 	ctxt->sys_regs[CONTEXTIDR_EL1]	= read_sysreg_el1(contextidr);
 	ctxt->sys_regs[AMAIR_EL1]	= read_sysreg_el1(amair);
 	ctxt->sys_regs[CNTKCTL_EL1]	= read_sysreg_el1(cntkctl);
 	ctxt->sys_regs[PAR_EL1]		= read_sysreg(par_el1);
 
 	ctxt->gp_regs.sp_el1		= kvm_read_sysreg(sp_el1);
-	ctxt->gp_regs.elr_el1		= read_sysreg_el1(elr);
-	ctxt->gp_regs.spsr[KVM_SPSR_EL1]= read_sysreg_el1(spsr);
+	ctxt->gp_regs.elr_el1		= kvm_read_sysreg_el1(elr);
+	ctxt->gp_regs.spsr[KVM_SPSR_EL1]= kvm_read_sysreg_el1(spsr);
 }
 
 static hyp_alternate_select(__sysreg_call_save_host_state,
@@ -111,15 +111,15 @@ static void __hyp_text __sysreg_restore_state(struct kvm_cpu_context *ctxt)
 	write_sysreg_el1(ctxt->sys_regs[AFSR1_EL1],	afsr1);
 	write_sysreg_el1(ctxt->sys_regs[FAR_EL1],	far);
 	write_sysreg_el1(ctxt->sys_regs[MAIR_EL1],	mair);
-	write_sysreg_el1(ctxt->sys_regs[VBAR_EL1],	vbar);
+	kvm_write_sysreg_el1(ctxt->sys_regs[VBAR_EL1],	vbar);
 	write_sysreg_el1(ctxt->sys_regs[CONTEXTIDR_EL1],contextidr);
 	write_sysreg_el1(ctxt->sys_regs[AMAIR_EL1],	amair);
 	write_sysreg_el1(ctxt->sys_regs[CNTKCTL_EL1], 	cntkctl);
 	write_sysreg(ctxt->sys_regs[PAR_EL1],		par_el1);
 
 	kvm_write_sysreg(ctxt->gp_regs.sp_el1,		sp_el1);
-	write_sysreg_el1(ctxt->gp_regs.elr_el1,		elr);
-	write_sysreg_el1(ctxt->gp_regs.spsr[KVM_SPSR_EL1],spsr);
+	kvm_write_sysreg_el1(ctxt->gp_regs.elr_el1,	elr);
+	kvm_write_sysreg_el1(ctxt->gp_regs.spsr[KVM_SPSR_EL1],spsr);
 }
 
 static hyp_alternate_select(__sysreg_call_restore_host_state,
