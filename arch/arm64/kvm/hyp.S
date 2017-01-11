@@ -20,6 +20,7 @@
 #include <asm/alternative.h>
 #include <asm/assembler.h>
 #include <asm/cpufeature.h>
+#include <asm/kvm_nested_pv.h>
 
 /*
  * u64 __kvm_call_hyp(void *hypfn, ...);
@@ -43,9 +44,19 @@
 ENTRY(__kvm_call_hyp)
 alternative_if_not ARM64_HAS_VIRT_HOST_EXTN
 	str     lr, [sp, #-16]!
-	hvc	#0
+	hvc_pv	#0
 	ldr     lr, [sp], #16
 	ret
-alternative_else_nop_endif
+alternative_else
+	/*
+	 * With alternative_else_nop_endif, I got a compile error.
+	 * "Error: bad or irreducible absolute expression" when using hvc_pv.
+	 * So, use alternative_else, which I have no idea why the compiler
+	 * doesn't complain.
+	 */
 	b	__vhe_hyp_call
+	nop
+	nop
+	nop
+alternative_endif
 ENDPROC(__kvm_call_hyp)
