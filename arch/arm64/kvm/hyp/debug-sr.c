@@ -21,6 +21,7 @@
 #include <asm/debug-monitors.h>
 #include <asm/kvm_asm.h>
 #include <asm/kvm_hyp.h>
+#include <asm/kvm_nested_pv.h>
 
 #define read_debug(r,n)		read_sysreg(r##n##_el1)
 #define write_debug(v,r,n)	write_sysreg(v, r##n##_el1)
@@ -133,5 +134,5 @@ void __hyp_text __debug_cond_restore_host_state(struct kvm_vcpu *vcpu)
 
 u32 __hyp_text __kvm_get_mdcr_el2(void)
 {
-	return read_sysreg(mdcr_el2);
+	return kvm_read_sysreg(mdcr_el2);
 }

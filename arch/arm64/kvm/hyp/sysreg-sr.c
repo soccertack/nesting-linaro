@@ -20,6 +20,7 @@
 
 #include <asm/kvm_asm.h>
 #include <asm/kvm_hyp.h>
+#include <asm/kvm_nested_pv.h>
 
 /* Yes, this does nothing, on purpose */
 static void __hyp_text __sysreg_do_nothing(struct kvm_cpu_context *ctxt) { }
@@ -39,13 +40,13 @@ static void __hyp_text __sysreg_save_common_state(struct kvm_cpu_context *ctxt)
 	ctxt->sys_regs[TPIDR_EL1]	= read_sysreg(tpidr_el1);
 	ctxt->sys_regs[MDSCR_EL1]	= read_sysreg(mdscr_el1);
 	ctxt->gp_regs.regs.sp		= read_sysreg(sp_el0);
-	ctxt->gp_regs.regs.pc		= read_sysreg_el2(elr);
-	ctxt->gp_regs.regs.pstate	= read_sysreg_el2(spsr);
+	ctxt->gp_regs.regs.pc		= kvm_read_sysreg_el2(elr);
+	ctxt->gp_regs.regs.pstate	= kvm_read_sysreg_el2(spsr);
 }
 
 static void __hyp_text __sysreg_save_state(struct kvm_cpu_context *ctxt)
 {
-	ctxt->sys_regs[MPIDR_EL1]	= read_sysreg(vmpidr_el2);
+	ctxt->sys_regs[MPIDR_EL1]	= kvm_read_sysreg(vmpidr_el2);
 	ctxt->sys_regs[CSSELR_EL1]	= read_sysreg(csselr_el1);
 	ctxt->sys_regs[SCTLR_EL1]	= read_sysreg_el1(sctlr);
 	ctxt->sys_regs[CPACR_EL1]	= read_sysreg_el1(cpacr);
@@ -63,7 +64,7 @@ static void __hyp_text __sysreg_save_state(struct kvm_cpu_context *ctxt)
 	ctxt->sys_regs[CNTKCTL_EL1]	= read_sysreg_el1(cntkctl);
 	ctxt->sys_regs[PAR_EL1]		= read_sysreg(par_el1);
 
-	ctxt->gp_regs.sp_el1		= read_sysreg(sp_el1);
+	ctxt->gp_regs.sp_el1		= kvm_read_sysreg(sp_el1);
 	ctxt->gp_regs.elr_el1		= read_sysreg_el1(elr);
 	ctxt->gp_regs.spsr[KVM_SPSR_EL1]= read_sysreg_el1(spsr);
 }
@@ -92,13 +93,13 @@ static void __hyp_text __sysreg_restore_common_state(struct kvm_cpu_context *ctx
 	write_sysreg(ctxt->sys_regs[TPIDR_EL1],	  tpidr_el1);
 	write_sysreg(ctxt->sys_regs[MDSCR_EL1],	  mdscr_el1);
 	write_sysreg(ctxt->gp_regs.regs.sp,	  sp_el0);
-	write_sysreg_el2(ctxt->gp_regs.regs.pc,	  elr);
-	write_sysreg_el2(ctxt->gp_regs.regs.pstate, spsr);
+	kvm_write_sysreg_el2(ctxt->gp_regs.regs.pc,	  elr);
+	kvm_write_sysreg_el2(ctxt->gp_regs.regs.pstate, spsr);
 }
 
 static void __hyp_text __sysreg_restore_state(struct kvm_cpu_context *ctxt)
 {
-	write_sysreg(ctxt->sys_regs[MPIDR_EL1],		vmpidr_el2);
+	kvm_write_sysreg(ctxt->sys_regs[MPIDR_EL1],	vmpidr_el2);
 	write_sysreg(ctxt->sys_regs[CSSELR_EL1],	csselr_el1);
 	write_sysreg_el1(ctxt->sys_regs[SCTLR_EL1],	sctlr);
 	write_sysreg_el1(ctxt->sys_regs[CPACR_EL1],	cpacr);
@@ -116,7 +117,7 @@ static void __hyp_text __sysreg_restore_state(struct kvm_cpu_context *ctxt)
 	write_sysreg_el1(ctxt->sys_regs[CNTKCTL_EL1], 	cntkctl);
 	write_sysreg(ctxt->sys_regs[PAR_EL1],		par_el1);
 
-	write_sysreg(ctxt->gp_regs.sp_el1,		sp_el1);
+	kvm_write_sysreg(ctxt->gp_regs.sp_el1,		sp_el1);
 	write_sysreg_el1(ctxt->gp_regs.elr_el1,		elr);
 	write_sysreg_el1(ctxt->gp_regs.spsr[KVM_SPSR_EL1],spsr);
 }
@@ -141,7 +142,7 @@ void __hyp_text __sysreg32_save_state(struct kvm_vcpu *vcpu)
 {
 	u64 *spsr, *sysreg;
 
-	if (read_sysreg(hcr_el2) & HCR_RW)
+	if (kvm_read_sysreg(hcr_el2) & HCR_RW)
 		return;
 
 	spsr = vcpu->arch.ctxt.gp_regs.spsr;
@@ -166,7 +167,7 @@ void __hyp_text __sysreg32_restore_state(struct kvm_vcpu *vcpu)
 {
 	u64 *spsr, *sysreg;
 
-	if (read_sysreg(hcr_el2) & HCR_RW)
+	if (kvm_read_sysreg(hcr_el2) & HCR_RW)
 		return;
 
 	spsr = vcpu->arch.ctxt.gp_regs.spsr;

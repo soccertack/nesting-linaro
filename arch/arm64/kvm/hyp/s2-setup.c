@@ -19,6 +19,7 @@
 #include <asm/kvm_arm.h>
 #include <asm/kvm_asm.h>
 #include <asm/kvm_hyp.h>
+#include <asm/kvm_nested_pv.h>
 
 u32 __hyp_text __init_stage2_translation(void)
 {
@@ -82,7 +83,7 @@ u32 __hyp_text __init_stage2_translation(void)
 			VTCR_EL2_VS_16BIT :
 			VTCR_EL2_VS_8BIT;
 
-	write_sysreg(val, vtcr_el2);
+	kvm_write_sysreg(val, vtcr_el2);
 
 	return parange;
 }

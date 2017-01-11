@@ -22,10 +22,11 @@
 #include <asm/kvm_emulate.h>
 #include <asm/kvm_hyp.h>
 #include <asm/fpsimd.h>
+#include <asm/kvm_nested_pv.h>
 
 static bool __hyp_text __fpsimd_enabled_nvhe(void)
 {
-	return !(read_sysreg(cptr_el2) & CPTR_EL2_TFP);
+	return !(kvm_read_sysreg(cptr_el2) & CPTR_EL2_TFP);
 }
 
 static bool __hyp_text __fpsimd_enabled_vhe(void)
@@ -60,7 +61,7 @@ static void __hyp_text __activate_traps_nvhe(void)
 
 	val = CPTR_EL2_DEFAULT;
 	val |= CPTR_EL2_TTA | CPTR_EL2_TFP;
-	write_sysreg(val, cptr_el2);
+	kvm_write_sysreg(val, cptr_el2);
 }
 
 static hyp_alternate_select(__activate_traps_arch,
@@ -85,9 +86,9 @@ static void __hyp_text __activate_traps(struct kvm_vcpu *vcpu)
 		write_sysreg(1 << 30, fpexc32_el2);
 		isb();
 	}
-	write_sysreg(val, hcr_el2);
+	kvm_write_sysreg(val, hcr_el2);
 	/* Trap on AArch32 cp15 c15 accesses (EL1 or EL0) */
-	write_sysreg(1 << 15, hstr_el2);
+	kvm_write_sysreg(1 << 15, hstr_el2);
 	/*
 	 * Make sure we trap PMU access from EL0 to EL2. Also sanitize
 	 * PMSELR_EL0 to make sure it never contains the cycle
@@ -96,7 +97,7 @@ static void __hyp_text __activate_traps(struct kvm_vcpu *vcpu)
 	 */
 	write_sysreg(0, pmselr_el0);
 	write_sysreg(ARMV8_PMU_USERENR_MASK, pmuserenr_el0);
-	write_sysreg(vcpu->arch.mdcr_el2, mdcr_el2);
+	kvm_write_sysreg(vcpu->arch.mdcr_el2, mdcr_el2);
 	__activate_traps_arch()();
 }
 
@@ -104,15 +105,15 @@ static void __hyp_text __deactivate_traps_vhe(void)
 {
 	extern char vectors[];	/* kernel exception vectors */
 
-	write_sysreg(HCR_HOST_VHE_FLAGS, hcr_el2);
+	kvm_write_sysreg(HCR_HOST_VHE_FLAGS, hcr_el2);
 	write_sysreg(CPACR_EL1_FPEN, cpacr_el1);
 	write_sysreg(vectors, vbar_el1);
 }
 
 static void __hyp_text __deactivate_traps_nvhe(void)
 {
-	write_sysreg(HCR_RW, hcr_el2);
-	write_sysreg(CPTR_EL2_DEFAULT, cptr_el2);
+	kvm_write_sysreg(HCR_RW, hcr_el2);
+	kvm_write_sysreg(CPTR_EL2_DEFAULT, cptr_el2);
 }
 
 static hyp_alternate_select(__deactivate_traps_arch,
@@ -128,23 +129,23 @@ static void __hyp_text __deactivate_traps(struct kvm_vcpu *vcpu)
 	 * HCR_EL2.VSE is cleared to 0."
 	 */
 	if (vcpu->arch.hcr_el2 & HCR_VSE)
-		vcpu->arch.hcr_el2 = read_sysreg(hcr_el2);
+		vcpu->arch.hcr_el2 = kvm_read_sysreg(hcr_el2);
 
 	__deactivate_traps_arch()();
-	write_sysreg(0, hstr_el2);
-	write_sysreg(read_sysreg(mdcr_el2) & MDCR_EL2_HPMN_MASK, mdcr_el2);
+	kvm_write_sysreg(0, hstr_el2);
+	kvm_write_sysreg(kvm_read_sysreg(mdcr_el2) & MDCR_EL2_HPMN_MASK, mdcr_el2);
 	write_sysreg(0, pmuserenr_el0);
 }
 
 static void __hyp_text __activate_vm(struct kvm_vcpu *vcpu)
 {
 	struct kvm *kvm = kern_hyp_va(vcpu->kvm);
-	write_sysreg(kvm->arch.vttbr, vttbr_el2);
+	kvm_write_sysreg(kvm->arch.vttbr, vttbr_el2);
 }
 
 static void __hyp_text __deactivate_vm(struct kvm_vcpu *vcpu)
 {
-	write_sysreg(0, vttbr_el2);
+	kvm_write_sysreg(0, vttbr_el2);
 }
 
 static void __hyp_text __vgic_save_state(struct kvm_vcpu *vcpu)
@@ -154,17 +155,17 @@ static void __hyp_text __vgic_save_state(struct kvm_vcpu *vcpu)
 	else
 		__vgic_v2_save_state(vcpu);
 
-	write_sysreg(read_sysreg(hcr_el2) & ~HCR_INT_OVERRIDE, hcr_el2);
+	kvm_write_sysreg(kvm_read_sysreg(hcr_el2) & ~HCR_INT_OVERRIDE, hcr_el2);
 }
 
 static void __hyp_text __vgic_restore_state(struct kvm_vcpu *vcpu)
 {
 	u64 val;
 
-	val = read_sysreg(hcr_el2);
+	val = kvm_read_sysreg(hcr_el2);
 	val |= 	HCR_INT_OVERRIDE;
 	val |= vcpu->arch.irq_lines;
-	write_sysreg(val, hcr_el2);
+	kvm_write_sysreg(val, hcr_el2);
 
 	if (static_branch_unlikely(&kvm_vgic_global_state.gicv3_cpuif))
 		__vgic_v3_restore_state(vcpu);
@@ -217,7 +218,7 @@ static bool __hyp_text __translate_far_to_hpfar(u64 far, u64 *hpfar)
 
 static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 {
-	u64 esr = read_sysreg_el2(esr);
+	u64 esr = kvm_read_sysreg_el2(esr);
 	u8 ec = ESR_ELx_EC(esr);
 	u64 hpfar, far;
 
@@ -226,7 +227,7 @@ static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 	if (ec != ESR_ELx_EC_DABT_LOW && ec != ESR_ELx_EC_IABT_LOW)
 		return true;
 
-	far = read_sysreg_el2(far);
+	far = kvm_read_sysreg_el2(far);
 
 	/*
 	 * The HPFAR can be invalid if the stage 2 fault did not
@@ -244,7 +245,7 @@ static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 		if (!__translate_far_to_hpfar(far, &hpfar))
 			return false;
 	} else {
-		hpfar = read_sysreg(hpfar_el2);
+		hpfar = kvm_read_sysreg(hpfar_el2);
 	}
 
 	vcpu->arch.fault.far_el2 = far;
@@ -254,17 +255,17 @@ static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 
 static void __hyp_text __skip_instr(struct kvm_vcpu *vcpu)
 {
-	*vcpu_pc(vcpu) = read_sysreg_el2(elr);
+	*vcpu_pc(vcpu) = kvm_read_sysreg_el2(elr);
 
 	if (vcpu_mode_is_32bit(vcpu)) {
-		vcpu->arch.ctxt.gp_regs.regs.pstate = read_sysreg_el2(spsr);
+		vcpu->arch.ctxt.gp_regs.regs.pstate = kvm_read_sysreg_el2(spsr);
 		kvm_skip_instr32(vcpu, kvm_vcpu_trap_il_is32bit(vcpu));
-		write_sysreg_el2(vcpu->arch.ctxt.gp_regs.regs.pstate, spsr);
+		kvm_write_sysreg_el2(vcpu->arch.ctxt.gp_regs.regs.pstate, spsr);
 	} else {
 		*vcpu_pc(vcpu) += 4;
 	}
 
-	write_sysreg_el2(*vcpu_pc(vcpu), elr);
+	kvm_write_sysreg_el2(*vcpu_pc(vcpu), elr);
 }
 
 int __hyp_text __kvm_vcpu_run(struct kvm_vcpu *vcpu)
@@ -275,7 +276,7 @@ int __hyp_text __kvm_vcpu_run(struct kvm_vcpu *vcpu)
 	u64 exit_code;
 
 	vcpu = kern_hyp_va(vcpu);
-	write_sysreg(vcpu, tpidr_el2);
+	kvm_write_sysreg(vcpu, tpidr_el2);
 
 	host_ctxt = kern_hyp_va(vcpu->arch.host_cpu_context);
 	guest_ctxt = &vcpu->arch.ctxt;
@@ -377,18 +378,18 @@ static void __hyp_text __hyp_call_panic_nvhe(u64 spsr, u64 elr, u64 par)
 
 	__hyp_do_panic(str_va,
 		       spsr,  elr,
-		       read_sysreg(esr_el2),   read_sysreg_el2(far),
-		       read_sysreg(hpfar_el2), par,
-		       (void *)read_sysreg(tpidr_el2));
+		       kvm_read_sysreg(esr_el2),   kvm_read_sysreg_el2(far),
+		       kvm_read_sysreg(hpfar_el2), par,
+		       (void *)kvm_read_sysreg(tpidr_el2));
 }
 
 static void __hyp_text __hyp_call_panic_vhe(u64 spsr, u64 elr, u64 par)
 {
 	panic(__hyp_panic_string,
 	      spsr,  elr,
-	      read_sysreg_el2(esr),   read_sysreg_el2(far),
-	      read_sysreg(hpfar_el2), par,
-	      (void *)read_sysreg(tpidr_el2));
+	      kvm_read_sysreg_el2(esr),   kvm_read_sysreg_el2(far),
+	      kvm_read_sysreg(hpfar_el2), par,
+	      (void *)kvm_read_sysreg(tpidr_el2));
 }
 
 static hyp_alternate_select(__hyp_call_panic,
@@ -397,15 +398,15 @@ static hyp_alternate_select(__hyp_call_panic,
 
 void __hyp_text __noreturn __hyp_panic(void)
 {
-	u64 spsr = read_sysreg_el2(spsr);
-	u64 elr = read_sysreg_el2(elr);
+	u64 spsr = kvm_read_sysreg_el2(spsr);
+	u64 elr = kvm_read_sysreg_el2(elr);
 	u64 par = read_sysreg(par_el1);
 
-	if (read_sysreg(vttbr_el2)) {
+	if (kvm_read_sysreg(vttbr_el2)) {
 		struct kvm_vcpu *vcpu;
 		struct kvm_cpu_context *host_ctxt;
 
-		vcpu = (struct kvm_vcpu *)read_sysreg(tpidr_el2);
+		vcpu = (struct kvm_vcpu *)kvm_read_sysreg(tpidr_el2);
 		host_ctxt = kern_hyp_va(vcpu->arch.host_cpu_context);
 		__deactivate_traps(vcpu);
 		__deactivate_vm(vcpu);
