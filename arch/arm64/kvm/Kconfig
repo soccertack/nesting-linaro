@@ -53,6 +53,12 @@ config KVM_ARM_PMU
 	  Adds support for a virtual Performance Monitoring Unit (PMU) in
 	  virtual machines.
 
+config PV_EL2
+	bool "Supports KVM/ARM running as a guest hypervisor via PV"
+	depends on KVM
+	---help---
+	 Run KVM as a guest hypervisor via paravirtualization.
+
 source drivers/vhost/Kconfig
 
 endif # VIRTUALIZATION
