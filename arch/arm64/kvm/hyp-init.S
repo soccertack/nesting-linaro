@@ -22,6 +22,7 @@
 #include <asm/kvm_mmu.h>
 #include <asm/pgtable-hwdef.h>
 #include <asm/sysreg.h>
+#include <asm/kvm_nested_pv.h>
 
 	.text
 	.pushsection	.hyp.idmap.text, "ax"
@@ -59,7 +60,7 @@ __invalid:
 	 */
 __do_hyp_init:
 
-	msr	ttbr0_el2, x0
+	msr_pv	ttbr0_el2, x0
 
 	mrs	x4, tcr_el1
 	ldr	x5, =TCR_EL2_MASK
@@ -92,31 +93,31 @@ __do_hyp_init:
 	mrs	x5, ID_AA64MMFR0_EL1
 	bfi	x4, x5, #16, #3
 
-	msr	tcr_el2, x4
+	msr_pv	tcr_el2, x4
 
 	mrs	x4, mair_el1
-	msr	mair_el2, x4
+	msr_pv	mair_el2, x4
 	isb
 
 	/* Invalidate the stale TLBs from Bootloader */
-	tlbi	alle2
+	tlbi_pv0	alle2
 	dsb	sy
 
-	mrs	x4, sctlr_el2
+	mrs_pv	x4, sctlr_el2
 	and	x4, x4, #SCTLR_ELx_EE	// preserve endianness of EL2
 	ldr	x5, =SCTLR_ELx_FLAGS
 	orr	x4, x4, x5
-	msr	sctlr_el2, x4
+	msr_pv	sctlr_el2, x4
 	isb
 
 	/* Set the stack and new vectors */
 	kern_hyp_va	x1
 	mov	sp, x1
 	kern_hyp_va	x2
-	msr	vbar_el2, x2
+	msr_pv	vbar_el2, x2
 
 	/* Hello, World! */
-	eret
+	eret_pv
 ENDPROC(__kvm_hyp_init)
 
 	/*
@@ -124,17 +125,17 @@ ENDPROC(__kvm_hyp_init)
 	 */
 ENTRY(__kvm_hyp_reset)
 	/* We're now in idmap, disable MMU */
-	mrs	x0, sctlr_el2
+	mrs_pv	x0, sctlr_el2
 	ldr	x1, =SCTLR_ELx_FLAGS
 	bic	x0, x0, x1		// Clear SCTL_M and etc
-	msr	sctlr_el2, x0
+	msr_pv	sctlr_el2, x0
 	isb
 
 	/* Install stub vectors */
 	adr_l	x0, __hyp_stub_vectors
-	msr	vbar_el2, x0
+	msr_pv	vbar_el2, x0
 
-	eret
+	eret_pv
 ENDPROC(__kvm_hyp_reset)
 
 	.ltorg

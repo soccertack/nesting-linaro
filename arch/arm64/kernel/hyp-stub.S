@@ -26,6 +26,7 @@
 #include <asm/kvm_asm.h>
 #include <asm/ptrace.h>
 #include <asm/virt.h>
+#include <asm/kvm_nested_pv.h>
 
 	.text
 	.align 11
@@ -55,7 +56,7 @@ ENDPROC(__hyp_stub_vectors)
 	.align 11
 
 el1_sync:
-	mrs	x30, esr_el2
+	mrs_pv	x30, esr_el2
 	lsr	x30, x30, #ESR_ELx_EC_SHIFT
 
 	cmp	x30, #ESR_ELx_EC_HVC64
@@ -63,12 +64,12 @@ el1_sync:
 
 	cmp	x0, #HVC_GET_VECTORS
 	b.ne	1f
-	mrs	x0, vbar_el2
+	mrs_pv	x0, vbar_el2
 	b	9f
 
 1:	cmp	x0, #HVC_SET_VECTORS
 	b.ne	2f
-	msr	vbar_el2, x1
+	msr_pv	vbar_el2, x1
 	b	9f
 
 2:	cmp	x0, #HVC_SOFT_RESTART
@@ -82,7 +83,7 @@ el1_sync:
 	/* Someone called kvm_call_hyp() against the hyp-stub... */
 3:	mov	x0, #ARM_EXCEPTION_HYP_GONE
 
-9:	eret
+9:	eret_pv
 ENDPROC(el1_sync)
 
 .macro invalid_vector	label
@@ -124,7 +125,7 @@ ENDPROC(\label)
 ENTRY(__hyp_get_vectors)
 	str	lr, [sp, #-16]!
 	mov	x0, #HVC_GET_VECTORS
-	hvc	#0
+	hvc_pv	#0
 	ldr	lr, [sp], #16
 	ret
 ENDPROC(__hyp_get_vectors)
@@ -133,7 +134,7 @@ ENTRY(__hyp_set_vectors)
 	str	lr, [sp, #-16]!
 	mov	x1, x0
 	mov	x0, #HVC_SET_VECTORS
-	hvc	#0
+	hvc_pv	#0
 	ldr	lr, [sp], #16
 	ret
 ENDPROC(__hyp_set_vectors)

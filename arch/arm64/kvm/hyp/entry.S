@@ -24,6 +24,7 @@
 #include <asm/kvm_arm.h>
 #include <asm/kvm_asm.h>
 #include <asm/kvm_mmu.h>
+#include <asm/kvm_nested_pv.h>
 
 #define CPU_GP_REG_OFFSET(x)	(CPU_GP_REGS + x)
 #define CPU_XREG_OFFSET(x)	CPU_GP_REG_OFFSET(CPU_USER_PT_REGS + 8*x)
@@ -85,7 +86,7 @@ ENTRY(__guest_enter)
 	ldr	x18,      [x18, #CPU_XREG_OFFSET(18)]
 
 	// Do not touch any register after this!
-	eret
+	eret_pv
 ENDPROC(__guest_enter)
 
 ENTRY(__guest_exit)
@@ -128,9 +129,9 @@ ENTRY(__guest_exit)
 	// time to find out. From your VAXorcist book, page 666:
 	// "Threaten me not, oh Evil one!  For I speak with
 	// the power of DEC, and I command thee to show thyself!"
-	mrs	x2, elr_el2
-	mrs	x3, esr_el2
-	mrs	x4, spsr_el2
+	mrs_pv	x2, elr_el2
+	mrs_pv	x3, esr_el2
+	mrs_pv	x4, spsr_el2
 	mov	x5, x0
 
 	dsb	sy		// Synchronize against in-flight ld/st
@@ -151,9 +152,9 @@ abort_guest_exit_end:
 	// context so that we can report some information.
 	// Merge the exception code with the SError pending bit.
 	tbz	x0, #ARM_EXIT_WITH_SERROR_BIT, 1f
-	msr	elr_el2, x2
-	msr	esr_el2, x3
-	msr	spsr_el2, x4
+	msr_pv	elr_el2, x2
+	msr_pv	esr_el2, x3
+	msr_pv	spsr_el2, x4
 	orr	x0, x0, x5
 1:	ret
 ENDPROC(__guest_exit)
@@ -163,9 +164,9 @@ ENTRY(__fpsimd_guest_restore)
 	stp	x4, lr, [sp, #-16]!
 
 alternative_if_not ARM64_HAS_VIRT_HOST_EXTN
-	mrs	x2, cptr_el2
+	mrs_pv	x2, cptr_el2
 	bic	x2, x2, #CPTR_EL2_TFP
-	msr	cptr_el2, x2
+	msr_pv	cptr_el2, x2
 alternative_else
 	mrs	x2, cpacr_el1
 	orr	x2, x2, #CPACR_EL1_FPEN
@@ -173,7 +174,7 @@ alternative_else
 alternative_endif
 	isb
 
-	mrs	x3, tpidr_el2
+	mrs_pv	x3, tpidr_el2
 
 	ldr	x0, [x3, #VCPU_HOST_CONTEXT]
 	kern_hyp_va x0
@@ -185,14 +186,14 @@ alternative_endif
 	bl	__fpsimd_restore_state
 
 	// Skip restoring fpexc32 for AArch64 guests
-	mrs	x1, hcr_el2
+	mrs_pv	x1, hcr_el2
 	tbnz	x1, #HCR_RW_SHIFT, 1f
 	ldr	x4, [x3, #VCPU_FPEXC32_EL2]
-	msr	fpexc32_el2, x4
+	msr_pv	fpexc32_el2, x4
 1:
 	ldp	x4, lr, [sp], #16
 	ldp	x2, x3, [sp], #16
 	ldp	x0, x1, [sp], #16
 
-	eret
+	eret_pv
 ENDPROC(__fpsimd_guest_restore)

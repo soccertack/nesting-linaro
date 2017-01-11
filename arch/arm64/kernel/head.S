@@ -41,6 +41,7 @@
 #include <asm/sysreg.h>
 #include <asm/thread_info.h>
 #include <asm/virt.h>
+#include <asm/kvm_nested_pv.h>
 
 #define __PHYS_OFFSET	(KERNEL_START - TEXT_OFFSET)
 
@@ -487,13 +488,17 @@ ENTRY(kimage_vaddr)
  * booted in EL1 or EL2 respectively.
  */
 ENTRY(el2_setup)
+#ifndef CONFIG_PV_EL2
 	mrs	x0, CurrentEL
+#else
+	mov     x0, #CurrentEL_EL2
+#endif
 	cmp	x0, #CurrentEL_EL2
 	b.ne	1f
-	mrs	x0, sctlr_el2
+	mrs_pv	x0, sctlr_el2
 CPU_BE(	orr	x0, x0, #(1 << 25)	)	// Set the EE bit for EL2
 CPU_LE(	bic	x0, x0, #(1 << 25)	)	// Clear the EE bit for EL2
-	msr	sctlr_el2, x0
+	msr_pv	sctlr_el2, x0
 	b	2f
 1:	mrs	x0, sctlr_el1
 CPU_BE(	orr	x0, x0, #(3 << 24)	)	// Set the EE and E0E bits for EL1
@@ -522,7 +527,7 @@ CPU_LE(	bic	x0, x0, #(3 << 24)	)	// Clear the EE and E0E bits for EL1
 	orr	x0, x0, #HCR_TGE		// Enable Host Extensions
 	orr	x0, x0, #HCR_E2H
 set_hcr:
-	msr	hcr_el2, x0
+	msr_pv	hcr_el2, x0
 	isb
 
 	/*
@@ -536,11 +541,11 @@ set_hcr:
 	 * EL2.
 	 */
 	cbnz	x2, 1f
-	mrs	x0, cnthctl_el2
+	mrs_pv	x0, cnthctl_el2
 	orr	x0, x0, #3			// Enable EL1 physical timers
-	msr	cnthctl_el2, x0
+	msr_pv	cnthctl_el2, x0
 1:
-	msr	cntvoff_el2, xzr		// Clear virtual offset
+	msr_pv	cntvoff_el2, xzr		// Clear virtual offset
 
 #ifdef CONFIG_ARM_GIC_V3
 	/* GICv3 system register access */
@@ -564,8 +569,8 @@ set_hcr:
 	/* Populate ID registers. */
 	mrs	x0, midr_el1
 	mrs	x1, mpidr_el1
-	msr	vpidr_el2, x0
-	msr	vmpidr_el2, x1
+	msr_pv	vpidr_el2, x0
+	msr_pv	vmpidr_el2, x1
 
 	/*
 	 * When VHE is not in use, early init of EL2 and EL1 needs to be
@@ -584,11 +589,11 @@ CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
 
 	/* Coprocessor traps. */
 	mov	x0, #0x33ff
-	msr	cptr_el2, x0			// Disable copro. traps to EL2
+	msr_pv	cptr_el2, x0			// Disable copro. traps to EL2
 1:
 
 #ifdef CONFIG_COMPAT
-	msr	hstr_el2, xzr			// Disable CP15 traps to EL2
+	msr_pv	hstr_el2, xzr			// Disable CP15 traps to EL2
 #endif
 
 	/* EL2 debug */
@@ -600,10 +605,10 @@ CPU_LE(	movk	x0, #0x30d0, lsl #16	)	// Clear EE and E0E on LE systems
 	ubfx	x0, x0, #11, #5			// to EL2 and allow access to
 4:
 	csel	x0, xzr, x0, lt			// all PMU counters from EL1
-	msr	mdcr_el2, x0			// (if they exist)
+	msr_pv	mdcr_el2, x0			// (if they exist)
 
 	/* Stage-2 translation */
-	msr	vttbr_el2, xzr
+	msr_pv	vttbr_el2, xzr
 
 	cbz	x2, install_el2_stub
 
@@ -615,15 +620,15 @@ install_el2_stub:
 	/* Hypervisor stub */
 	adrp	x0, __hyp_stub_vectors
 	add	x0, x0, #:lo12:__hyp_stub_vectors
-	msr	vbar_el2, x0
+	msr_pv	vbar_el2, x0
 
 	/* spsr */
 	mov	x0, #(PSR_F_BIT | PSR_I_BIT | PSR_A_BIT | PSR_D_BIT |\
 		      PSR_MODE_EL1h)
-	msr	spsr_el2, x0
-	msr	elr_el2, lr
+	msr_pv	spsr_el2, x0
+	msr_pv	elr_el2, lr
 	mov	w0, #BOOT_CPU_MODE_EL2		// This CPU booted in EL2
-	eret
+	eret_pv
 ENDPROC(el2_setup)
 
 /*
@@ -831,7 +836,7 @@ __primary_switch:
 	isb
 	bl	__create_page_tables		// recreate kernel mapping
 
-	tlbi	vmalle1				// Remove any stale TLB entries
+	tlbi_pv0	vmalle1			// Remove any stale TLB entries
 	dsb	nsh
 
 	msr	sctlr_el1, x19			// re-enable the MMU

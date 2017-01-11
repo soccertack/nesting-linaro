@@ -23,6 +23,7 @@
 #include <asm/kvm_arm.h>
 #include <asm/kvm_asm.h>
 #include <asm/kvm_mmu.h>
+#include <asm/kvm_nested_pv.h>
 
 	.text
 	.pushsection	.hyp.text, "ax"
@@ -72,7 +73,7 @@ el1_sync:				// Guest trapped into EL2
 	stp	x0, x1, [sp, #-16]!
 
 alternative_if_not ARM64_HAS_VIRT_HOST_EXTN
-	mrs	x1, esr_el2
+	mrs_pv	x1, esr_el2
 alternative_else
 	mrs	x1, esr_el1
 alternative_endif
@@ -81,7 +82,7 @@ alternative_endif
 	cmp	x0, #ESR_ELx_EC_HVC64
 	b.ne	el1_trap
 
-	mrs	x1, vttbr_el2		// If vttbr is valid, the 64bit guest
+	mrs_pv	x1, vttbr_el2		// If vttbr is valid, the 64bit guest
 	cbnz	x1, el1_trap		// called HVC
 
 	/* Here, we're pretty sure the host called HVC. */
@@ -89,7 +90,7 @@ alternative_endif
 
 	cmp	x0, #HVC_GET_VECTORS
 	b.ne	1f
-	mrs	x0, vbar_el2
+	mrs_pv	x0, vbar_el2
 	b	2f
 
 1:
@@ -99,7 +100,7 @@ alternative_endif
 	kern_hyp_va	x0
 	do_el2_call
 
-2:	eret
+2:	eret_pv
 
 el1_trap:
 	/*
@@ -117,19 +118,19 @@ alternative_if_not ARM64_HAS_NO_FPSIMD
 	b.eq	__fpsimd_guest_restore
 alternative_else_nop_endif
 
-	mrs	x1, tpidr_el2
+	mrs_pv	x1, tpidr_el2
 	mov	x0, #ARM_EXCEPTION_TRAP
 	b	__guest_exit
 
 el1_irq:
 	stp     x0, x1, [sp, #-16]!
-	mrs	x1, tpidr_el2
+	mrs_pv	x1, tpidr_el2
 	mov	x0, #ARM_EXCEPTION_IRQ
 	b	__guest_exit
 
 el1_error:
 	stp     x0, x1, [sp, #-16]!
-	mrs	x1, tpidr_el2
+	mrs_pv	x1, tpidr_el2
 	mov	x0, #ARM_EXCEPTION_EL1_SERROR
 	b	__guest_exit
 
@@ -146,22 +147,22 @@ el2_error:
 	 * as temp registers.
 	 * For (2), who cares?
 	 */
-	mrs	x0, elr_el2
+	mrs_pv	x0, elr_el2
 	adr	x1, abort_guest_exit_start
 	cmp	x0, x1
 	adr	x1, abort_guest_exit_end
 	ccmp	x0, x1, #4, ne
 	b.ne	__hyp_panic
 	mov	x0, #(1 << ARM_EXIT_WITH_SERROR_BIT)
-	eret
+	eret_pv
 
 ENTRY(__hyp_do_panic)
 	mov	lr, #(PSR_F_BIT | PSR_I_BIT | PSR_A_BIT | PSR_D_BIT |\
 		      PSR_MODE_EL1h)
-	msr	spsr_el2, lr
+	msr_pv	spsr_el2, lr
 	ldr	lr, =panic
-	msr	elr_el2, lr
-	eret
+	msr_pv	elr_el2, lr
+	eret_pv
 ENDPROC(__hyp_do_panic)
 
 .macro invalid_vector	label, target = __hyp_panic
