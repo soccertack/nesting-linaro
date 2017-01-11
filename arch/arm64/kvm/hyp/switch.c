@@ -83,7 +83,7 @@ static void __hyp_text __activate_traps(struct kvm_vcpu *vcpu)
 	 */
 	val = vcpu->arch.hcr_el2;
 	if (!(val & HCR_RW) && system_supports_fpsimd()) {
-		write_sysreg(1 << 30, fpexc32_el2);
+		kvm_write_sysreg(1 << 30, fpexc32_el2);
 		isb();
 	}
 	kvm_write_sysreg(val, hcr_el2);

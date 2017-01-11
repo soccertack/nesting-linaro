@@ -153,14 +153,14 @@ void __hyp_text __sysreg32_save_state(struct kvm_vcpu *vcpu)
 	spsr[KVM_SPSR_IRQ] = read_sysreg(spsr_irq);
 	spsr[KVM_SPSR_FIQ] = read_sysreg(spsr_fiq);
 
-	sysreg[DACR32_EL2] = read_sysreg(dacr32_el2);
-	sysreg[IFSR32_EL2] = read_sysreg(ifsr32_el2);
+	sysreg[DACR32_EL2] = kvm_read_sysreg(dacr32_el2);
+	sysreg[IFSR32_EL2] = kvm_read_sysreg(ifsr32_el2);
 
 	if (__fpsimd_enabled())
-		sysreg[FPEXC32_EL2] = read_sysreg(fpexc32_el2);
+		sysreg[FPEXC32_EL2] = kvm_read_sysreg(fpexc32_el2);
 
 	if (vcpu->arch.debug_flags & KVM_ARM64_DEBUG_DIRTY)
-		sysreg[DBGVCR32_EL2] = read_sysreg(dbgvcr32_el2);
+		sysreg[DBGVCR32_EL2] = kvm_read_sysreg(dbgvcr32_el2);
 }
 
 void __hyp_text __sysreg32_restore_state(struct kvm_vcpu *vcpu)
@@ -178,9 +178,9 @@ void __hyp_text __sysreg32_restore_state(struct kvm_vcpu *vcpu)
 	write_sysreg(spsr[KVM_SPSR_IRQ], spsr_irq);
 	write_sysreg(spsr[KVM_SPSR_FIQ], spsr_fiq);
 
-	write_sysreg(sysreg[DACR32_EL2], dacr32_el2);
-	write_sysreg(sysreg[IFSR32_EL2], ifsr32_el2);
+	kvm_write_sysreg(sysreg[DACR32_EL2], dacr32_el2);
+	kvm_write_sysreg(sysreg[IFSR32_EL2], ifsr32_el2);
 
 	if (vcpu->arch.debug_flags & KVM_ARM64_DEBUG_DIRTY)
-		write_sysreg(sysreg[DBGVCR32_EL2], dbgvcr32_el2);
+		kvm_write_sysreg(sysreg[DBGVCR32_EL2], dbgvcr32_el2);
 }
