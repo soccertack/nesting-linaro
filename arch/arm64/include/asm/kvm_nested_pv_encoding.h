@@ -138,6 +138,7 @@
 .equ .L__mair_el1,	(ENCODE_EL1_SYSREG(MAIR_EL1))
 .equ .L__contextidr_el1,	(ENCODE_EL1_SYSREG(CONTEXTIDR_EL1))
 .equ .L__amair_el1,	(ENCODE_EL1_SYSREG(AMAIR_EL1))
+.equ .L__cntkctl_el1,	(ENCODE_EL1_SYSREG(CNTKCTL_EL1))
 
 /* TLBI instructions */
 .equ .L__ipas2e1is,	(ENCODE_TLBI_INSTR(IPAS2E1IS))
@@ -217,6 +218,7 @@
 ".equ .L__mair_el1,"	__stringify(ENCODE_EL1_SYSREG(MAIR_EL1))"\n"	\
 ".equ .L__contextidr_el1,"	__stringify(ENCODE_EL1_SYSREG(CONTEXTIDR_EL1))"\n"	\
 ".equ .L__amair_el1,"	__stringify(ENCODE_EL1_SYSREG(AMAIR_EL1))"\n"	\
+".equ .L__cntkctl_el1,"	__stringify(ENCODE_EL1_SYSREG(CNTKCTL_EL1))"\n"	\
 "\n"									\
 ".equ .L__ipas2e1is,"	__stringify(ENCODE_TLBI_INSTR(IPAS2E1IS))"\n"	\
 ".equ .L__vmalle1is,"	__stringify(ENCODE_TLBI_INSTR(VMALLE1IS))"\n"	\
