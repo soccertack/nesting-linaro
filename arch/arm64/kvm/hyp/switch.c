@@ -218,7 +218,7 @@ static bool __hyp_text __translate_far_to_hpfar(u64 far, u64 *hpfar)
 
 static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 {
-	u64 esr = kvm_read_sysreg_el2(esr);
+	u64 esr = read_sysreg_el2(esr);
 	u8 ec = ESR_ELx_EC(esr);
 	u64 hpfar, far;
 
@@ -227,7 +227,7 @@ static bool __hyp_text __populate_fault_info(struct kvm_vcpu *vcpu)
 	if (ec != ESR_ELx_EC_DABT_LOW && ec != ESR_ELx_EC_IABT_LOW)
 		return true;
 
-	far = kvm_read_sysreg_el2(far);
+	far = read_sysreg_el2(far);
 
 	/*
 	 * The HPFAR can be invalid if the stage 2 fault did not
@@ -387,7 +387,7 @@ static void __hyp_text __hyp_call_panic_vhe(u64 spsr, u64 elr, u64 par)
 {
 	panic(__hyp_panic_string,
 	      spsr,  elr,
-	      kvm_read_sysreg_el2(esr),   kvm_read_sysreg_el2(far),
+	      read_sysreg_el2(esr),   read_sysreg_el2(far),
 	      kvm_read_sysreg(hpfar_el2), par,
 	      (void *)kvm_read_sysreg(tpidr_el2));
 }
