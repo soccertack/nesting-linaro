@@ -848,7 +848,15 @@ static int __init arch_timer_init(void)
 	if (is_hyp_mode_available() || !arch_timer_ppi[VIRT_PPI]) {
 		bool has_ppi;
 
+#ifndef CONFIG_PV_VHE
 		if (is_kernel_in_hyp_mode()) {
+#else
+		/*
+		 * We don't provide the hyp timer to the guest hypervisor yet.
+		 * Therefore, let it use the EL1 phys timer instead.
+		 */
+		if (false) {
+#endif
 			arch_timer_uses_ppi = HYP_PPI;
 			has_ppi = !!arch_timer_ppi[HYP_PPI];
 		} else {
