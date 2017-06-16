@@ -56,11 +56,13 @@ static u64* get_sys_regp(struct kvm_vcpu *vcpu, u16 imm)
 	else if (sreg_num > NR_SYS_REGS) /* We keep sp_el1 in gp_regs */
 		sysregp = get_special_reg(vcpu, sreg_num);
 	else {	/* Otherwise, el1 sysregs are in sys_regs */
+/*
 		if (sreg_num != VBAR_EL1 && sreg_num != ELR_EL1 &&
 		    sreg_num != SPSR_EL1) {
 			kvm_err("PV access to [%d] el1 reg", sreg_num);
 			BUG();
 		}
+*/
 		sysregp = &vcpu->arch.ctxt.sys_regs[sreg_num];
 	}
 
