@@ -59,7 +59,7 @@ int handle_hvc_nested(struct kvm_vcpu *vcpu)
 	 * as a psci call.
 	 */
 	if (!vcpu_mode_el2(vcpu) && !vcpu_nested_stage2_enabled(vcpu) &&
-	    !kvm_vcpu_hvc_get_imm(vcpu))
+	    kvm_vcpu_hvc_get_imm(vcpu))
 		return -EINVAL;
 
 	/* The guest hypervisor will take care of the rest */
