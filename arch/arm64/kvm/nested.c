@@ -33,6 +33,11 @@ int init_nested_virt(void)
 	if (nested_param && cpus_have_const_cap(ARM64_HAS_NESTED_VIRT))
 		kvm_info("Nested virtualization is supported\n");
 
+#ifdef CONFIG_KVM_ARM_NESTED_PV
+	kvmarm_nested = true;
+	kvm_info("Nested virtualization is supported\n");
+#endif
+
 	return 0;
 }
 
