@@ -33,6 +33,7 @@
 #include <asm/thread_info.h>
 #include <asm/asm-uaccess.h>
 #include <asm/unistd.h>
+#include <asm/kvm_nested_pv.h>
 
 /*
  * Context tracking subsystem.  Used to instrument transitions
@@ -243,7 +244,7 @@ alternative_else_nop_endif
 	ldp	x28, x29, [sp, #16 * 14]
 	ldr	lr, [sp, #S_LR]
 	add	sp, sp, #S_FRAME_SIZE		// restore sp
-	eret					// return to kernel
+	eret_pv	// return to kernel
 	.endm
 
 	.macro	irq_stack_entry
