@@ -28,20 +28,18 @@
 
 /*
  * MRS and MSR
- * 16bit = 3bit (intr) + 1bit (set if EL2 reg) + 7bit (sysregs) + 5bit (gpregs)
+ * 16bit = 3bit (intr) + 8bit (sysregs) + 5bit (gpregs)
  */
 
 #define MS_IMM          (1 << 13)	/* [13] Set if MRS_IMM*/
-#define MS_EL2          (1 << 12)	/* [12] */
 #define MS_SYSREG_SHIFT 5
-#define MS_SYSREG_MASK  (0x7F << MS_SYSREG_SHIFT) /* 7 bits [5:11]*/
+#define MS_SYSREG_MASK  (0xFF << MS_SYSREG_SHIFT) /* 8 bits [5:12]*/
 #define MS_GPREG_MASK   0x1F		/* 5 bits [0:4] */
 #define MS_IMM_MASK     0x0F		/* 4 bits [0:3] */
 
 #define get_sysreg_num(x)	(((x) & MS_SYSREG_MASK) >> MS_SYSREG_SHIFT)
 #define get_gpreg_num(x)	((x) & MS_GPREG_MASK)
 #define get_msr_imm(x)		((x) & MS_IMM_MASK)
-#define is_el2_reg(x)		((x) & MS_EL2)
 #define is_msr_imm(x)		((x) & MS_IMM)
 
 /*
@@ -67,8 +65,7 @@
 #define ENCODE_GP_REG(x)	(HVC_IMM_SHIFT(x))
 
 /* For MRS, MSR */
-#define ENCODE_EL2_SYSREG(x)	(HVC_IMM_SHIFT(((x) << MS_SYSREG_SHIFT) | MS_EL2))
-#define ENCODE_EL1_SYSREG(x)	(HVC_IMM_SHIFT(((x) << MS_SYSREG_SHIFT)))
+#define ENCODE_SYSREG(x)	(HVC_IMM_SHIFT(((x) << MS_SYSREG_SHIFT)))
 
 /* For TLBI*/
 #define ENCODE_TLBI_INSTR(x)	(HVC_IMM_SHIFT((x) << TLBI_INSTR_SHIFT))
@@ -83,62 +80,64 @@
 .equ .L__hvc,	(ENCODE_INSTR(HVC_PV))
 
 /* EL2 system registers */
-.equ .L__elr_el2,	(ENCODE_EL2_SYSREG(ELR_EL2))
-.equ .L__spsr_el2,	(ENCODE_EL2_SYSREG(SPSR_EL2))
-.equ .L__sp_el2,	(ENCODE_EL2_SYSREG(SP_EL2))
-.equ .L__amair_el2,	(ENCODE_EL2_SYSREG(AMAIR_EL2))
-.equ .L__mair_el2,	(ENCODE_EL2_SYSREG(MAIR_EL2))
-.equ .L__tcr_el2,	(ENCODE_EL2_SYSREG(TCR_EL2))
-.equ .L__ttbr0_el2,	(ENCODE_EL2_SYSREG(TTBR0_EL2))
-.equ .L__vtcr_el2,	(ENCODE_EL2_SYSREG(VTCR_EL2))
-.equ .L__vttbr_el2,	(ENCODE_EL2_SYSREG(VTTBR_EL2))
-.equ .L__vmpidr_el2,	(ENCODE_EL2_SYSREG(VMPIDR_EL2))
-.equ .L__vpidr_el2,	(ENCODE_EL2_SYSREG(VPIDR_EL2))
-.equ .L__mdcr_el2,	(ENCODE_EL2_SYSREG(MDCR_EL2))
-.equ .L__cnthctl_el2,	(ENCODE_EL2_SYSREG(CNTHCTL_EL2))
-.equ .L__cnthp_ctl_el2,	(ENCODE_EL2_SYSREG(CNTHP_CTL_EL2))
-.equ .L__cnthp_cval_el2,	(ENCODE_EL2_SYSREG(CNTHP_CVAL_EL2))
-.equ .L__cnthp_tval_el2,	(ENCODE_EL2_SYSREG(CNTHP_TVAL_EL2))
-.equ .L__cntvoff_el2,	(ENCODE_EL2_SYSREG(CNTVOFF_EL2))
-.equ .L__actlr_el2,	(ENCODE_EL2_SYSREG(ACTLR_EL2))
-.equ .L__afsr0_el2,	(ENCODE_EL2_SYSREG(AFSR0_EL2))
-.equ .L__afsr1_el2,	(ENCODE_EL2_SYSREG(AFSR1_EL2))
-.equ .L__cptr_el2,	(ENCODE_EL2_SYSREG(CPTR_EL2))
-.equ .L__esr_el2,	(ENCODE_EL2_SYSREG(ESR_EL2))
-.equ .L__far_el2,	(ENCODE_EL2_SYSREG(FAR_EL2))
-.equ .L__hacr_el2,	(ENCODE_EL2_SYSREG(HACR_EL2))
-.equ .L__hcr_el2,	(ENCODE_EL2_SYSREG(HCR_EL2))
-.equ .L__hpfar_el2,	(ENCODE_EL2_SYSREG(HPFAR_EL2))
-.equ .L__hstr_el2,	(ENCODE_EL2_SYSREG(HSTR_EL2))
-.equ .L__rmr_el2,	(ENCODE_EL2_SYSREG(RMR_EL2))
-.equ .L__rvbar_el2,	(ENCODE_EL2_SYSREG(RVBAR_EL2))
-.equ .L__sctlr_el2,	(ENCODE_EL2_SYSREG(SCTLR_EL2))
-.equ .L__tpidr_el2,	(ENCODE_EL2_SYSREG(TPIDR_EL2))
-.equ .L__vbar_el2,	(ENCODE_EL2_SYSREG(VBAR_EL2))
+.equ .L__elr_el2,	(ENCODE_SYSREG(ELR_EL2))
+.equ .L__spsr_el2,	(ENCODE_SYSREG(SPSR_EL2))
+.equ .L__sp_el2,	(ENCODE_SYSREG(SP_EL2))
+.equ .L__amair_el2,	(ENCODE_SYSREG(AMAIR_EL2))
+.equ .L__mair_el2,	(ENCODE_SYSREG(MAIR_EL2))
+.equ .L__tcr_el2,	(ENCODE_SYSREG(TCR_EL2))
+.equ .L__ttbr0_el2,	(ENCODE_SYSREG(TTBR0_EL2))
+.equ .L__vtcr_el2,	(ENCODE_SYSREG(VTCR_EL2))
+.equ .L__vttbr_el2,	(ENCODE_SYSREG(VTTBR_EL2))
+.equ .L__vmpidr_el2,	(ENCODE_SYSREG(VMPIDR_EL2))
+.equ .L__vpidr_el2,	(ENCODE_SYSREG(VPIDR_EL2))
+.equ .L__mdcr_el2,	(ENCODE_SYSREG(MDCR_EL2))
+.equ .L__cnthctl_el2,	(ENCODE_SYSREG(CNTHCTL_EL2))
+.equ .L__cnthp_ctl_el2,	(ENCODE_SYSREG(CNTHP_CTL_EL2))
+.equ .L__cnthp_cval_el2,	(ENCODE_SYSREG(CNTHP_CVAL_EL2))
+.equ .L__cnthp_tval_el2,	(ENCODE_SYSREG(CNTHP_TVAL_EL2))
+.equ .L__cntvoff_el2,	(ENCODE_SYSREG(CNTVOFF_EL2))
+.equ .L__actlr_el2,	(ENCODE_SYSREG(ACTLR_EL2))
+.equ .L__afsr0_el2,	(ENCODE_SYSREG(AFSR0_EL2))
+.equ .L__afsr1_el2,	(ENCODE_SYSREG(AFSR1_EL2))
+.equ .L__cptr_el2,	(ENCODE_SYSREG(CPTR_EL2))
+.equ .L__esr_el2,	(ENCODE_SYSREG(ESR_EL2))
+.equ .L__far_el2,	(ENCODE_SYSREG(FAR_EL2))
+.equ .L__hacr_el2,	(ENCODE_SYSREG(HACR_EL2))
+.equ .L__hcr_el2,	(ENCODE_SYSREG(HCR_EL2))
+.equ .L__hpfar_el2,	(ENCODE_SYSREG(HPFAR_EL2))
+.equ .L__hstr_el2,	(ENCODE_SYSREG(HSTR_EL2))
+.equ .L__rmr_el2,	(ENCODE_SYSREG(RMR_EL2))
+.equ .L__rvbar_el2,	(ENCODE_SYSREG(RVBAR_EL2))
+.equ .L__sctlr_el2,	(ENCODE_SYSREG(SCTLR_EL2))
+.equ .L__tpidr_el2,	(ENCODE_SYSREG(TPIDR_EL2))
+.equ .L__vbar_el2,	(ENCODE_SYSREG(VBAR_EL2))
 
-.equ .L__dacr32_el2,	(ENCODE_EL1_SYSREG(DACR32_EL2))
-.equ .L__ifsr32_el2,	(ENCODE_EL1_SYSREG(IFSR32_EL2))
-.equ .L__fpexc32_el2,	(ENCODE_EL1_SYSREG(FPEXC32_EL2))
-.equ .L__dbgvcr32_el2,	(ENCODE_EL1_SYSREG(DBGVCR32_EL2))
+.equ .L__dacr32_el2,	(ENCODE_SYSREG(DACR32_EL2))
+.equ .L__ifsr32_el2,	(ENCODE_SYSREG(IFSR32_EL2))
+.equ .L__fpexc32_el2,	(ENCODE_SYSREG(FPEXC32_EL2))
+.equ .L__dbgvcr32_el2,	(ENCODE_SYSREG(DBGVCR32_EL2))
 
-.equ .L__sp_el1,	(ENCODE_EL1_SYSREG(SP_EL1))
-.equ .L__vbar_el1,	(ENCODE_EL1_SYSREG(VBAR_EL1))
-.equ .L__esr_el1,	(ENCODE_EL1_SYSREG(ESR_EL1))
-.equ .L__far_el1,	(ENCODE_EL1_SYSREG(FAR_EL1))
-.equ .L__elr_el1,	(ENCODE_EL1_SYSREG(ELR_EL1))
-.equ .L__spsr_el1,	(ENCODE_EL1_SYSREG(SPSR_EL1))
+.equ .L__sp_el1,	(ENCODE_SYSREG(SP_EL1))
+.equ .L__vbar_el1,	(ENCODE_SYSREG(VBAR_EL1))
+.equ .L__esr_el1,	(ENCODE_SYSREG(ESR_EL1))
+.equ .L__far_el1,	(ENCODE_SYSREG(FAR_EL1))
+.equ .L__elr_el1,	(ENCODE_SYSREG(ELR_EL1))
+.equ .L__spsr_el1,	(ENCODE_SYSREG(SPSR_EL1))
 
-.equ .L__sctlr_el1,	(ENCODE_EL1_SYSREG(SCTLR_EL1))
-.equ .L__cpacr_el1 ,	(ENCODE_EL1_SYSREG(CPACR_EL1))
-.equ .L__ttbr0_el1,	(ENCODE_EL1_SYSREG(TTBR0_EL1))
-.equ .L__ttbr1_el1,	(ENCODE_EL1_SYSREG(TTBR1_EL1))
-.equ .L__tcr_el1,	(ENCODE_EL1_SYSREG(TCR_EL1))
-.equ .L__afsr0_el1,	(ENCODE_EL1_SYSREG(AFSR0_EL1))
-.equ .L__afsr1_el1,	(ENCODE_EL1_SYSREG(AFSR1_EL1))
-.equ .L__mair_el1,	(ENCODE_EL1_SYSREG(MAIR_EL1))
-.equ .L__contextidr_el1,	(ENCODE_EL1_SYSREG(CONTEXTIDR_EL1))
-.equ .L__amair_el1,	(ENCODE_EL1_SYSREG(AMAIR_EL1))
-.equ .L__cntkctl_el1,	(ENCODE_EL1_SYSREG(CNTKCTL_EL1))
+.equ .L__sctlr_el1,	(ENCODE_SYSREG(SCTLR_EL1))
+.equ .L__cpacr_el1 ,	(ENCODE_SYSREG(CPACR_EL1))
+.equ .L__ttbr0_el1,	(ENCODE_SYSREG(TTBR0_EL1))
+.equ .L__ttbr1_el1,	(ENCODE_SYSREG(TTBR1_EL1))
+.equ .L__tcr_el1,	(ENCODE_SYSREG(TCR_EL1))
+.equ .L__afsr0_el1,	(ENCODE_SYSREG(AFSR0_EL1))
+.equ .L__afsr1_el1,	(ENCODE_SYSREG(AFSR1_EL1))
+.equ .L__mair_el1,	(ENCODE_SYSREG(MAIR_EL1))
+.equ .L__contextidr_el1,	(ENCODE_SYSREG(CONTEXTIDR_EL1))
+.equ .L__amair_el1,	(ENCODE_SYSREG(AMAIR_EL1))
+.equ .L__cntkctl_el1,	(ENCODE_SYSREG(CNTKCTL_EL1))
+.equ .L__tpidr_el1,	(ENCODE_SYSREG(TPIDR_EL1))
+.equ ..L__actlr_el1,	(ENCODE_SYSREG(ACTLR_EL1))
 
 /* TLBI instructions */
 .equ .L__ipas2e1is,	(ENCODE_TLBI_INSTR(IPAS2E1IS))
@@ -166,59 +165,61 @@
 ".equ .L__tlbi,"	__stringify(ENCODE_INSTR(TLBI_PV))"\n"		\
 ".equ .L__hvc,"		__stringify(ENCODE_INSTR(HVC_PV))"\n"		\
 "\n"									\
-".equ .L__elr_el2,"	__stringify(ENCODE_EL2_SYSREG(ELR_EL2))"\n"	\
-".equ .L__spsr_el2,"	__stringify(ENCODE_EL2_SYSREG(SPSR_EL2))"\n"	\
-".equ .L__sp_el2,"	__stringify(ENCODE_EL2_SYSREG(SP_EL2))"\n"	\
-".equ .L__amair_el2,"	__stringify(ENCODE_EL2_SYSREG(AMAIR_EL2))"\n"	\
-".equ .L__mair_el2,"	__stringify(ENCODE_EL2_SYSREG(MAIR_EL2))"\n"	\
-".equ .L__tcr_el2,"	__stringify(ENCODE_EL2_SYSREG(TCR_EL2))"\n"	\
-".equ .L__ttbr0_el2,"	__stringify(ENCODE_EL2_SYSREG(TTBR0_EL2))"\n"	\
-".equ .L__vtcr_el2,"	__stringify(ENCODE_EL2_SYSREG(VTCR_EL2))"\n"	\
-".equ .L__vttbr_el2,"	__stringify(ENCODE_EL2_SYSREG(VTTBR_EL2))"\n"	\
-".equ .L__vmpidr_el2,"	__stringify(ENCODE_EL2_SYSREG(VMPIDR_EL2))"\n"	\
-".equ .L__vpidr_el2,"	__stringify(ENCODE_EL2_SYSREG(VPIDR_EL2))"\n"	\
-".equ .L__mdcr_el2,"	__stringify(ENCODE_EL2_SYSREG(MDCR_EL2))"\n"	\
-".equ .L__cnthctl_el2,"	__stringify(ENCODE_EL2_SYSREG(CNTHCTL_EL2))"\n"	\
-".equ .L__cnthp_ctl_el2,"	__stringify(ENCODE_EL2_SYSREG(CNTHP_CTL_EL2))"\n"	\
-".equ .L__cnthp_cval_el2,"	__stringify(ENCODE_EL2_SYSREG(CNTHP_CVAL_EL2))"\n"	\
-".equ .L__cnthp_tval_el2,"	__stringify(ENCODE_EL2_SYSREG(CNTHP_TVAL_EL2))"\n"	\
-".equ .L__cntvoff_el2,"	__stringify(ENCODE_EL2_SYSREG(CNTVOFF_EL2))"\n"	\
-".equ .L__actlr_el2,"	__stringify(ENCODE_EL2_SYSREG(ACTLR_EL2))"\n"	\
-".equ .L__afsr0_el2,"	__stringify(ENCODE_EL2_SYSREG(AFSR0_EL2))"\n"	\
-".equ .L__afsr1_el2,"	__stringify(ENCODE_EL2_SYSREG(AFSR1_EL2))"\n"	\
-".equ .L__cptr_el2,"	__stringify(ENCODE_EL2_SYSREG(CPTR_EL2))"\n"	\
-".equ .L__esr_el2,"	__stringify(ENCODE_EL2_SYSREG(ESR_EL2))"\n"	\
-".equ .L__far_el2,"	__stringify(ENCODE_EL2_SYSREG(FAR_EL2))"\n"	\
-".equ .L__hacr_el2,"	__stringify(ENCODE_EL2_SYSREG(HACR_EL2))"\n"	\
-".equ .L__hcr_el2,"	__stringify(ENCODE_EL2_SYSREG(HCR_EL2))"\n"	\
-".equ .L__hpfar_el2,"	__stringify(ENCODE_EL2_SYSREG(HPFAR_EL2))"\n"	\
-".equ .L__hstr_el2,"	__stringify(ENCODE_EL2_SYSREG(HSTR_EL2))"\n"	\
-".equ .L__rmr_el2,"	__stringify(ENCODE_EL2_SYSREG(RMR_EL2))"\n"	\
-".equ .L__rvbar_el2,"	__stringify(ENCODE_EL2_SYSREG(RVBAR_EL2))"\n"	\
-".equ .L__sctlr_el2,"	__stringify(ENCODE_EL2_SYSREG(SCTLR_EL2))"\n"	\
-".equ .L__tpidr_el2,"	__stringify(ENCODE_EL2_SYSREG(TPIDR_EL2))"\n"	\
-".equ .L__vbar_el2,"	__stringify(ENCODE_EL2_SYSREG(VBAR_EL2))"\n"	\
-".equ .L__dacr32_el2,"	__stringify(ENCODE_EL1_SYSREG(DACR32_EL2))"\n"	\
-".equ .L__ifsr32_el2,"	__stringify(ENCODE_EL1_SYSREG(IFSR32_EL2))"\n"	\
-".equ .L__fpexc32_el2,"	__stringify(ENCODE_EL1_SYSREG(FPEXC32_EL2))"\n"	\
-".equ .L__dbgvcr32_el2," __stringify(ENCODE_EL1_SYSREG(DBGVCR32_EL2))"\n" \
-".equ .L__sp_el1,"	__stringify(ENCODE_EL1_SYSREG(SP_EL1))"\n"	\
-".equ .L__vbar_el1,"	__stringify(ENCODE_EL1_SYSREG(VBAR_EL1))"\n"	\
-".equ .L__esr_el1,"	__stringify(ENCODE_EL1_SYSREG(ESR_EL1))"\n"	\
-".equ .L__far_el1,"	__stringify(ENCODE_EL1_SYSREG(FAR_EL1))"\n"	\
-".equ .L__elr_el1,"	__stringify(ENCODE_EL1_SYSREG(ELR_EL1))"\n"	\
-".equ .L__spsr_el1,"	__stringify(ENCODE_EL1_SYSREG(SPSR_EL1))"\n"	\
-".equ .L__sctlr_el1,"	__stringify(ENCODE_EL1_SYSREG(SCTLR_EL1))"\n"	\
-".equ .L__cpacr_el1,"	__stringify(ENCODE_EL1_SYSREG(CPACR_EL1))"\n"	\
-".equ .L__ttbr0_el1,"	__stringify(ENCODE_EL1_SYSREG(TTBR0_EL1))"\n"	\
-".equ .L__ttbr1_el1,"	__stringify(ENCODE_EL1_SYSREG(TTBR1_EL1))"\n"	\
-".equ .L__tcr_el1,"	__stringify(ENCODE_EL1_SYSREG(TCR_EL1))"\n"	\
-".equ .L__afsr0_el1,"	__stringify(ENCODE_EL1_SYSREG(AFSR0_EL1))"\n"	\
-".equ .L__afsr1_el1,"	__stringify(ENCODE_EL1_SYSREG(AFSR1_EL1))"\n"	\
-".equ .L__mair_el1,"	__stringify(ENCODE_EL1_SYSREG(MAIR_EL1))"\n"	\
-".equ .L__contextidr_el1,"	__stringify(ENCODE_EL1_SYSREG(CONTEXTIDR_EL1))"\n"	\
-".equ .L__amair_el1,"	__stringify(ENCODE_EL1_SYSREG(AMAIR_EL1))"\n"	\
-".equ .L__cntkctl_el1,"	__stringify(ENCODE_EL1_SYSREG(CNTKCTL_EL1))"\n"	\
+".equ .L__elr_el2,"	__stringify(ENCODE_SYSREG(ELR_EL2))"\n"	\
+".equ .L__spsr_el2,"	__stringify(ENCODE_SYSREG(SPSR_EL2))"\n"	\
+".equ .L__sp_el2,"	__stringify(ENCODE_SYSREG(SP_EL2))"\n"	\
+".equ .L__amair_el2,"	__stringify(ENCODE_SYSREG(AMAIR_EL2))"\n"	\
+".equ .L__mair_el2,"	__stringify(ENCODE_SYSREG(MAIR_EL2))"\n"	\
+".equ .L__tcr_el2,"	__stringify(ENCODE_SYSREG(TCR_EL2))"\n"	\
+".equ .L__ttbr0_el2,"	__stringify(ENCODE_SYSREG(TTBR0_EL2))"\n"	\
+".equ .L__vtcr_el2,"	__stringify(ENCODE_SYSREG(VTCR_EL2))"\n"	\
+".equ .L__vttbr_el2,"	__stringify(ENCODE_SYSREG(VTTBR_EL2))"\n"	\
+".equ .L__vmpidr_el2,"	__stringify(ENCODE_SYSREG(VMPIDR_EL2))"\n"	\
+".equ .L__vpidr_el2,"	__stringify(ENCODE_SYSREG(VPIDR_EL2))"\n"	\
+".equ .L__mdcr_el2,"	__stringify(ENCODE_SYSREG(MDCR_EL2))"\n"	\
+".equ .L__cnthctl_el2,"	__stringify(ENCODE_SYSREG(CNTHCTL_EL2))"\n"	\
+".equ .L__cnthp_ctl_el2,"	__stringify(ENCODE_SYSREG(CNTHP_CTL_EL2))"\n"	\
+".equ .L__cnthp_cval_el2,"	__stringify(ENCODE_SYSREG(CNTHP_CVAL_EL2))"\n"	\
+".equ .L__cnthp_tval_el2,"	__stringify(ENCODE_SYSREG(CNTHP_TVAL_EL2))"\n"	\
+".equ .L__cntvoff_el2,"	__stringify(ENCODE_SYSREG(CNTVOFF_EL2))"\n"	\
+".equ .L__actlr_el2,"	__stringify(ENCODE_SYSREG(ACTLR_EL2))"\n"	\
+".equ .L__afsr0_el2,"	__stringify(ENCODE_SYSREG(AFSR0_EL2))"\n"	\
+".equ .L__afsr1_el2,"	__stringify(ENCODE_SYSREG(AFSR1_EL2))"\n"	\
+".equ .L__cptr_el2,"	__stringify(ENCODE_SYSREG(CPTR_EL2))"\n"	\
+".equ .L__esr_el2,"	__stringify(ENCODE_SYSREG(ESR_EL2))"\n"	\
+".equ .L__far_el2,"	__stringify(ENCODE_SYSREG(FAR_EL2))"\n"	\
+".equ .L__hacr_el2,"	__stringify(ENCODE_SYSREG(HACR_EL2))"\n"	\
+".equ .L__hcr_el2,"	__stringify(ENCODE_SYSREG(HCR_EL2))"\n"	\
+".equ .L__hpfar_el2,"	__stringify(ENCODE_SYSREG(HPFAR_EL2))"\n"	\
+".equ .L__hstr_el2,"	__stringify(ENCODE_SYSREG(HSTR_EL2))"\n"	\
+".equ .L__rmr_el2,"	__stringify(ENCODE_SYSREG(RMR_EL2))"\n"	\
+".equ .L__rvbar_el2,"	__stringify(ENCODE_SYSREG(RVBAR_EL2))"\n"	\
+".equ .L__sctlr_el2,"	__stringify(ENCODE_SYSREG(SCTLR_EL2))"\n"	\
+".equ .L__tpidr_el2,"	__stringify(ENCODE_SYSREG(TPIDR_EL2))"\n"	\
+".equ .L__vbar_el2,"	__stringify(ENCODE_SYSREG(VBAR_EL2))"\n"	\
+".equ .L__dacr32_el2,"	__stringify(ENCODE_SYSREG(DACR32_EL2))"\n"	\
+".equ .L__ifsr32_el2,"	__stringify(ENCODE_SYSREG(IFSR32_EL2))"\n"	\
+".equ .L__fpexc32_el2,"	__stringify(ENCODE_SYSREG(FPEXC32_EL2))"\n"	\
+".equ .L__dbgvcr32_el2," __stringify(ENCODE_SYSREG(DBGVCR32_EL2))"\n" \
+".equ .L__sp_el1,"	__stringify(ENCODE_SYSREG(SP_EL1))"\n"	\
+".equ .L__vbar_el1,"	__stringify(ENCODE_SYSREG(VBAR_EL1))"\n"	\
+".equ .L__esr_el1,"	__stringify(ENCODE_SYSREG(ESR_EL1))"\n"	\
+".equ .L__far_el1,"	__stringify(ENCODE_SYSREG(FAR_EL1))"\n"	\
+".equ .L__elr_el1,"	__stringify(ENCODE_SYSREG(ELR_EL1))"\n"	\
+".equ .L__spsr_el1,"	__stringify(ENCODE_SYSREG(SPSR_EL1))"\n"	\
+".equ .L__sctlr_el1,"	__stringify(ENCODE_SYSREG(SCTLR_EL1))"\n"	\
+".equ .L__cpacr_el1,"	__stringify(ENCODE_SYSREG(CPACR_EL1))"\n"	\
+".equ .L__ttbr0_el1,"	__stringify(ENCODE_SYSREG(TTBR0_EL1))"\n"	\
+".equ .L__ttbr1_el1,"	__stringify(ENCODE_SYSREG(TTBR1_EL1))"\n"	\
+".equ .L__tcr_el1,"	__stringify(ENCODE_SYSREG(TCR_EL1))"\n"	\
+".equ .L__afsr0_el1,"	__stringify(ENCODE_SYSREG(AFSR0_EL1))"\n"	\
+".equ .L__afsr1_el1,"	__stringify(ENCODE_SYSREG(AFSR1_EL1))"\n"	\
+".equ .L__mair_el1,"	__stringify(ENCODE_SYSREG(MAIR_EL1))"\n"	\
+".equ .L__contextidr_el1,"	__stringify(ENCODE_SYSREG(CONTEXTIDR_EL1))"\n"	\
+".equ .L__amair_el1,"	__stringify(ENCODE_SYSREG(AMAIR_EL1))"\n"	\
+".equ .L__cntkctl_el1,"	__stringify(ENCODE_SYSREG(CNTKCTL_EL1))"\n"	\
+".equ .L__tpidr_el1,"	__stringify(ENCODE_SYSREG(TPIDR_EL1))"\n"	\
+".equ .L__actlr_el1,"	__stringify(ENCODE_SYSREG(ACTLR_EL1))"\n"	\
 "\n"									\
 ".equ .L__ipas2e1is,"	__stringify(ENCODE_TLBI_INSTR(IPAS2E1IS))"\n"	\
 ".equ .L__vmalle1is,"	__stringify(ENCODE_TLBI_INSTR(VMALLE1IS))"\n"	\
