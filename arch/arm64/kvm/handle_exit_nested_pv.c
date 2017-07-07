@@ -174,7 +174,24 @@ static int handle_eret_pv(struct kvm_vcpu *vcpu)
 	return kvm_handle_eret(vcpu, NULL);
 }
 
+/*
+ * Handle non-paravirtualized hvc from virtual EL2.
+ */
+/* TODO: not sure if this is necessary. Is this for PSCI?*/
+static int handle_hvc_npv(struct kvm_vcpu *vcpu)
+{
+	/* If E2H is set, let the host hypervisor handle it natively.*/
+	if (vcpu_el2_e2h_is_set(vcpu)) {
+		pr_emerg("psci call from VHE guest\n");
+		return -EINVAL;
+	}
+	/* Otherwise, we don't use this encoding on non-VHE case */
+	return -ENXIO;
+}
+ 
+
 static pv_handle_fn pv_handlers[] = {
+	[HVC_NPV]	= handle_hvc_npv,
 	[MRS_PV]	= handle_mrs_pv,
 	[MSR_IMM_PV]	= handle_msr_pv,
 	[MSR_REG_PV]	= handle_msr_pv,
