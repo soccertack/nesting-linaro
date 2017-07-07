@@ -93,9 +93,6 @@
 .equ .L__vpidr_el2,	(ENCODE_SYSREG(VPIDR_EL2))
 .equ .L__mdcr_el2,	(ENCODE_SYSREG(MDCR_EL2))
 .equ .L__cnthctl_el2,	(ENCODE_SYSREG(CNTHCTL_EL2))
-.equ .L__cnthp_ctl_el2,	(ENCODE_SYSREG(CNTHP_CTL_EL2))
-.equ .L__cnthp_cval_el2,	(ENCODE_SYSREG(CNTHP_CVAL_EL2))
-.equ .L__cnthp_tval_el2,	(ENCODE_SYSREG(CNTHP_TVAL_EL2))
 .equ .L__cntvoff_el2,	(ENCODE_SYSREG(CNTVOFF_EL2))
 .equ .L__actlr_el2,	(ENCODE_SYSREG(ACTLR_EL2))
 .equ .L__afsr0_el2,	(ENCODE_SYSREG(AFSR0_EL2))
@@ -178,9 +175,6 @@
 ".equ .L__vpidr_el2,"	__stringify(ENCODE_SYSREG(VPIDR_EL2))"\n"	\
 ".equ .L__mdcr_el2,"	__stringify(ENCODE_SYSREG(MDCR_EL2))"\n"	\
 ".equ .L__cnthctl_el2,"	__stringify(ENCODE_SYSREG(CNTHCTL_EL2))"\n"	\
-".equ .L__cnthp_ctl_el2,"	__stringify(ENCODE_SYSREG(CNTHP_CTL_EL2))"\n"	\
-".equ .L__cnthp_cval_el2,"	__stringify(ENCODE_SYSREG(CNTHP_CVAL_EL2))"\n"	\
-".equ .L__cnthp_tval_el2,"	__stringify(ENCODE_SYSREG(CNTHP_TVAL_EL2))"\n"	\
 ".equ .L__cntvoff_el2,"	__stringify(ENCODE_SYSREG(CNTVOFF_EL2))"\n"	\
 ".equ .L__actlr_el2,"	__stringify(ENCODE_SYSREG(ACTLR_EL2))"\n"	\
 ".equ .L__afsr0_el2,"	__stringify(ENCODE_SYSREG(AFSR0_EL2))"\n"	\

@@ -224,41 +224,6 @@
 #define CPACR_EL1_FPEN		(3 << 20)
 #define CPACR_EL1_TTA		(1 << 28)
 
-/* el2 system regs */
-#define	ELR_EL2		0
-#define	SPSR_EL2	1
-#define	SP_EL2		2
-#define	AMAIR_EL2	3
-#define	MAIR_EL2	4
-#define	TCR_EL2		5
-#define	TTBR0_EL2	6
-#define	VTCR_EL2	7
-#define	VTTBR_EL2	8
-#define	VMPIDR_EL2	9
-#define	VPIDR_EL2	10	/* 10 */
-#define	MDCR_EL2	11
-#define	CNTHCTL_EL2	12
-#define	CNTHP_CTL_EL2	13
-#define	CNTHP_CVAL_EL2	14
-#define	CNTHP_TVAL_EL2	15
-#define	CNTVOFF_EL2	16
-#define	ACTLR_EL2	17
-#define	AFSR0_EL2	18
-#define	AFSR1_EL2	19
-#define	CPTR_EL2	20	/* 20 */
-#define	ESR_EL2		21
-#define	FAR_EL2		22
-#define	HACR_EL2	23
-#define	HCR_EL2		24
-#define	HPFAR_EL2	25
-#define	HSTR_EL2	26
-#define	RMR_EL2		27
-#define	RVBAR_EL2	28
-#define	SCTLR_EL2	29
-#define	TPIDR_EL2	30	/* 30 */
-#define	VBAR_EL2	31
-#define	NR_EL2_REGS	32
-
 /*
  * 0 is reserved as an invalid value.
  * Order should be kept in sync with the save/restore code.
@@ -306,9 +271,44 @@
 #define	IFSR32_EL2	96	/* Instruction Fault Status Register */
 #define	FPEXC32_EL2	97	/* Floating-Point Exception Control Register */
 #define	DBGVCR32_EL2	98	/* Debug Vector Catch Register */
-#define	NR_SYS_REGS	99	/* Nothing after this line! */
-#define	SP_EL1		100	/* Stack pointer (EL1) */
-#define	ELR_EL1		103	/* Exception Link Register */
-#define	SPSR_EL1	104	/* Saved Program Status Register */
+/* EL2 Regs */
+#define VPIDR_EL2       99      /* Virtualization Processor ID Register */
+#define VMPIDR_EL2      100     /* Virtualization Multiprocessor ID Register */
+#define SCTLR_EL2       101     /* System Control Register (EL2) */
+#define ACTLR_EL2       102     /* Auxiliary Control Register (EL2) */
+#define HCR_EL2         103     /* Hypervisor Configuration Register */
+#define MDCR_EL2        104     /* Monitor Debug Configuration Register (EL2) */
+#define CPTR_EL2        105     /* Architectural Feature Trap Register (EL2) */
+#define HSTR_EL2        106     /* Hypervisor System Trap Register */
+#define HACR_EL2        107     /* Hypervisor Auxiliary Control Register */
+#define TTBR0_EL2       108     /* Translation Table Base Register 0 (EL2) */
+#define TTBR1_EL2       109     /* Translation Table Base Register 1 (EL2) */
+#define TCR_EL2         110     /* Translation Control Register (EL2) */
+#define VTTBR_EL2       111     /* Virtualization Translation Table Base Register */
+#define VTCR_EL2        112     /* Virtualization Translation Control Register */
+#define AFSR0_EL2       113     /* Auxiliary Fault Status Register 0 (EL2) */
+#define AFSR1_EL2       114     /* Auxiliary Fault Status Register 1 (EL2) */
+#define ESR_EL2         115     /* Exception Syndrome Register (EL2) */
+#define FAR_EL2         116     /* Hypervisor IPA Fault Address Register */
+#define HPFAR_EL2       117     /* Hypervisor IPA Fault Address Register */
+#define MAIR_EL2        118     /* Memory Attribute Indirection Register (EL2) */
+#define AMAIR_EL2       119     /* Auxiliary Memory Attribute Indirection Register (EL2) */
+#define VBAR_EL2        120     /* Vector Base Address Register (EL2) */
+#define RVBAR_EL2       121     /* Reset Vector Base Address Register */
+#define RMR_EL2         122     /* Reset Management Register */
+#define CONTEXTIDR_EL2  123     /* Context ID Register */
+#define TPIDR_EL2       124     /* EL2 Software Thread ID Register */
+#define CNTVOFF_EL2     125     /* Counter-timer Virtual Offset register */
+#define CNTHCTL_EL2     126     /* Counter-timer Hypervisor Control register */
+
+#define NR_SYS_REGS     99     /* Nothing after this line! */
+
+#define SP_EL1          128     /* Stack pointer (EL1) */
+#define ELR_EL1         129     /* Exception Link Register */
+#define SPSR_EL1        130     /* Saved Program Status Register */
+
+#define SPSR_EL2     131     /* Saved Program Status Register (EL2) */
+#define ELR_EL2      132     /* Exception Link Register (EL2) */
+#define SP_EL2       133     /* Stack Pointer (EL2) */
 
 #endif /* __ARM64_KVM_ARM_H__ */
