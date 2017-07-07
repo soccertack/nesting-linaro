@@ -34,7 +34,6 @@ int init_nested_virt(void)
 		kvm_info("Nested virtualization is supported\n");
 
 #ifdef CONFIG_KVM_ARM_NESTED_PV
-	kvmarm_nested = true;
 	kvm_info("Nested virtualization is supported\n");
 #endif
 
@@ -47,9 +46,13 @@ bool nested_virt_in_use(struct kvm_vcpu *vcpu)
 	    && test_bit(KVM_ARM_VCPU_NESTED_VIRT, vcpu->arch.features))
 		return true;
 
+#ifdef CONFIG_KVM_ARM_NESTED_PV
+	return true;
+#endif
 	return false;
 }
 
+#ifdef CONFIG_KVM_ARM_NESTED_PV
 /* We forward all hvc instruction to the guest hypervisor. */
 int handle_hvc_nested(struct kvm_vcpu *vcpu)
 {
@@ -70,6 +73,7 @@ int handle_hvc_nested(struct kvm_vcpu *vcpu)
 	/* The guest hypervisor will take care of the rest */
 	return kvm_inject_nested_sync(vcpu, kvm_vcpu_get_hsr(vcpu));
 }
+#endif
 
 /*
  * Inject wfx to the virtual EL2 if this is not from the virtual EL2 and
