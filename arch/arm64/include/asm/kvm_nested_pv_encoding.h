@@ -19,6 +19,7 @@
  */
 
 #define PV_INSTR_SHIFT	13
+#define HVC_NPV		0x0
 #define MRS_PV		0x1
 #define MSR_REG_PV	0x2
 #define MSR_IMM_PV	0x3
