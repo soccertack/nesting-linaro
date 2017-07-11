@@ -634,6 +634,15 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 	int ret;
 	sigset_t sigsaved;
 
+	bool is_el2_before;
+	bool is_el1_after;
+	int exception_index;
+	unsigned long pc;
+	u32 esr;
+	u8 esr_ec;
+	u32 mode;
+	
+
 	if (unlikely(!kvm_vcpu_initialized(vcpu)))
 		return -ENOEXEC;
 
@@ -675,6 +684,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		kvm_pmu_flush_hwstate(vcpu);
 
 		kvm_timer_flush_hwstate(vcpu);
+
 		kvm_vgic_flush_hwstate(vcpu);
 
 		local_irq_disable();
@@ -721,6 +731,10 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		guest_enter_irqoff();
 
 		ret = kvm_call_hyp(__kvm_vcpu_run, vcpu);
+	
+		exception_index = ret;
+		pc = *vcpu_pc(vcpu);
+		esr = kvm_vcpu_get_hsr(vcpu);
 
 		vcpu->mode = OUTSIDE_GUEST_MODE;
 		vcpu->stat.exits++;
@@ -752,6 +766,7 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 		 * guest time.
 		 */
 		guest_exit();
+		esr_ec = kvm_vcpu_trap_get_class(vcpu);
 		trace_kvm_exit(ret, kvm_vcpu_trap_get_class(vcpu), *vcpu_pc(vcpu));
 
 		/*
@@ -766,7 +781,32 @@ int kvm_arch_vcpu_ioctl_run(struct kvm_vcpu *vcpu, struct kvm_run *run)
 
 		preempt_enable();
 
+		
+#ifdef CONFIG_ARM64
+		mode = *vcpu_cpsr(vcpu) & PSR_MODE_MASK;
+		is_el2_before  = (mode == PSR_MODE_EL2h);
 		ret = handle_exit(vcpu, run, ret);
+		mode = *vcpu_cpsr(vcpu) & PSR_MODE_MASK;
+		is_el1_after = (mode  == PSR_MODE_EL1h);
+#ifndef CONFIG_KVM_ARM_NESTED_PV
+		if (is_el2_before && is_el1_after && (esr_ec != ESR_ELx_EC_ERET)) {
+
+			pr_emerg("%s %d vcpu[%d]: virtual mode: %x", __func__, __LINE__, vcpu->vcpu_id, mode);
+			pr_emerg("%s %d exception idx: %d, serror: %s, esr_el2: %x pc: %lx",
+				 __func__, __LINE__,
+				ARM_EXCEPTION_CODE(exception_index),
+				ARM_SERROR_PENDING(exception_index) ? "true" : "false",
+				esr, pc);
+
+			pr_emerg("Change virtual mode from EL1h to EL2h\n");
+			BUG();
+			*vcpu_cpsr(vcpu) &= ~PSR_MODE_MASK;
+			*vcpu_cpsr(vcpu) |= PSR_MODE_EL2h;
+		}
+#endif
+#else
+		ret = handle_exit(vcpu, run, ret);
+#endif
 	}
 
 	/* Tell userspace about in-kernel device output levels */
