@@ -1803,10 +1803,56 @@ static int handle_hva_to_gpa(struct kvm *kvm,
 	return ret;
 }
 
+static inline unsigned long level_to_mapping_size(int last_level)
+{
+	unsigned long mapping_size = PAGE_SIZE;
+
+	if (last_level == 2)
+		mapping_size = S2_PMD_SIZE;
+	else if (last_level == 1)
+		mapping_size = S2_PUD_SIZE;
+	else
+		WARN(1, "The last translation level can't be 0.\n");
+
+	return mapping_size;
+}
+
+void unmap_shadow_stage2_range(struct kvm *kvm, gpa_t gpa, u64 size)
+{
+	unsigned long gfn_start, gfn_end, gfn;
+	struct kvm_rmap_head *rmap_head, *rmap_curr;
+        struct rmap_iterator iter;
+	unsigned long map_size;
+
+	gfn_start = gpa_to_gfn(gpa);
+	gfn_end = gpa_to_gfn(gpa + size);
+	gfn = gfn_start;
+
+	/*
+	 * We have to find L2 IPA for each L1 IPA and call the unmap function
+	 * separately. This is because L2 IPAs for the given continuous range
+	 * of L1 IPAs are not necessarily continuous. Therefore we have to look
+	 * up L2 IPA for each L1 IPA and do unmap separately.
+	 */
+	do {
+		rmap_head = gfn_to_rmap(kvm, gfn);
+		if (!rmap_head)
+			return;
+
+		map_size = PAGE_SIZE;
+		while ((rmap_curr = rmap_get_first(rmap_head, &iter))) {
+			map_size = level_to_mapping_size(rmap_curr->last_level);
+			kvm_unmap_stage2_range(kvm, rmap_curr->mmu,
+					       rmap_curr->val, map_size);
+		}
+	} while (gfn += map_size/PAGE_SIZE, gfn < gfn_end);
+}
+
 static int kvm_unmap_hva_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data)
 {
+	unmap_shadow_stage2_range(kvm, gpa, size);
 	kvm_unmap_stage2_range(kvm, &kvm->arch.mmu, gpa, size);
-	kvm_nested_s2_clear(kvm);
+
 	return 0;
 }
 

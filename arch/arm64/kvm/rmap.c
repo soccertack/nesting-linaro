@@ -1,7 +1,7 @@
 #include <asm/kvm_rmap.h>
 #include <asm/kvm_mmu.h>
 
-static struct kvm_rmap_head *gfn_to_rmap(struct kvm *kvm, gfn_t gfn)
+struct kvm_rmap_head *gfn_to_rmap(struct kvm *kvm, gfn_t gfn)
 {
 	struct kvm_memory_slot *slot = gfn_to_memslot(kvm, gfn);
 	unsigned long idx;
