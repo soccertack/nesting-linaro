@@ -1576,6 +1576,77 @@ static const struct sys_reg_desc sys_reg_descs[] = {
 	{ SYS_DESC(SYS_SP_EL2), NULL, reset_special, SP_EL2, 0},
 };
 
+#define SYS_INSN_TO_DESC(insn, access_fn, forward_fn)	\
+	{ SYS_DESC((insn)), (access_fn), NULL, 0, 0, NULL, NULL, (forward_fn) }
+static struct sys_reg_desc sys_insn_descs[] = {
+};
+
+#define reg_to_match_value(x)						\
+	({								\
+		unsigned long val;					\
+		val  = (x)->Op0 << 14;					\
+		val |= (x)->Op1 << 11;					\
+		val |= (x)->CRn << 7;					\
+		val |= (x)->CRm << 3;					\
+		val |= (x)->Op2;					\
+		val;							\
+	 })
+
+static int match_sys_reg(const void *key, const void *elt)
+{
+	const unsigned long pval = (unsigned long)key;
+	const struct sys_reg_desc *r = elt;
+
+	return pval - reg_to_match_value(r);
+}
+
+static const struct sys_reg_desc *find_reg(const struct sys_reg_params *params,
+					 const struct sys_reg_desc table[],
+					 unsigned int num)
+{
+	unsigned long pval = reg_to_match_value(params);
+
+	return bsearch((void *)pval, table, num, sizeof(table[0]), match_sys_reg);
+}
+
+static void perform_access(struct kvm_vcpu *vcpu,
+			   struct sys_reg_params *params,
+			   const struct sys_reg_desc *r)
+{
+	/*
+	 * Not having an accessor means that we have configured a trap
+	 * that we don't know how to handle. This certainly qualifies
+	 * as a gross bug that should be fixed right away.
+	 */
+	BUG_ON(!r->access);
+
+	/* Skip instruction if instructed so */
+	if (likely(r->access(vcpu, params, r)))
+		kvm_skip_instr(vcpu, kvm_vcpu_trap_il_is32bit(vcpu));
+}
+
+static int emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p)
+{
+
+	const struct sys_reg_desc *r;
+
+	/* Search from the system instruction table. */
+	r = find_reg(p, sys_insn_descs, ARRAY_SIZE(sys_insn_descs));
+
+	if (likely(r)) {
+		if (r->forward_trap && unlikely(r->forward_trap(vcpu)))
+			return 1;
+
+		perform_access(vcpu, p, r);
+	} else {
+		kvm_err("Unsupported guest sys instruction at: %lx\n",
+			*vcpu_pc(vcpu));
+		print_sys_reg_instr(p);
+		kvm_inject_undefined(vcpu);
+	}
+	return 1;
+}
+
 static bool trap_dbgidr(struct kvm_vcpu *vcpu,
 			struct sys_reg_params *p,
 			const struct sys_reg_desc *r)
@@ -1923,54 +1994,10 @@ static const struct sys_reg_desc *get_target_table(unsigned target,
 	}
 }
 
-#define reg_to_match_value(x)						\
-	({								\
-		unsigned long val;					\
-		val  = (x)->Op0 << 14;					\
-		val |= (x)->Op1 << 11;					\
-		val |= (x)->CRn << 7;					\
-		val |= (x)->CRm << 3;					\
-		val |= (x)->Op2;					\
-		val;							\
-	 })
-
-static int match_sys_reg(const void *key, const void *elt)
-{
-	const unsigned long pval = (unsigned long)key;
-	const struct sys_reg_desc *r = elt;
-
-	return pval - reg_to_match_value(r);
-}
-
-static const struct sys_reg_desc *find_reg(const struct sys_reg_params *params,
-					 const struct sys_reg_desc table[],
-					 unsigned int num)
-{
-	unsigned long pval = reg_to_match_value(params);
-
-	return bsearch((void *)pval, table, num, sizeof(table[0]), match_sys_reg);
-}
-
 int kvm_handle_cp14_load_store(struct kvm_vcpu *vcpu, struct kvm_run *run)
 {
 	kvm_inject_undefined(vcpu);
 	return 1;
-}
-
-static void perform_access(struct kvm_vcpu *vcpu,
-			   struct sys_reg_params *params,
-			   const struct sys_reg_desc *r)
-{
-	/*
-	 * Not having an accessor means that we have configured a trap
-	 * that we don't know how to handle. This certainly qualifies
-	 * as a gross bug that should be fixed right away.
-	 */
-	BUG_ON(!r->access);
-
-	/* Skip instruction if instructed so */
-	if (likely(r->access(vcpu, params, r)))
-		kvm_skip_instr(vcpu, kvm_vcpu_trap_il_is32bit(vcpu));
 }
 
 /*
@@ -2180,47 +2207,6 @@ static int emulate_sys_reg(struct kvm_vcpu *vcpu,
 		kvm_inject_undefined(vcpu);
 	}
 	return 1;
-}
-
-static int emulate_tlbi(struct kvm_vcpu *vcpu,
-			     struct sys_reg_params *params)
-{
-	/* TODO: support tlbi instruction emulation*/
-	kvm_inject_undefined(vcpu);
-	return 1;
-}
-
-static int emulate_at(struct kvm_vcpu *vcpu,
-			     struct sys_reg_params *params)
-{
-	/* TODO: support address translation instruction emulation */
-	kvm_inject_undefined(vcpu);
-	return 1;
-}
-
-static int emulate_sys_instr(struct kvm_vcpu *vcpu,
-			     struct sys_reg_params *params)
-{
-	int ret = 0;
-
-	/*
-	 * Forward this trap to the virtual EL2 if the virtual HCR_EL2.NV
-	 * bit is set.
-	 */
-	if (forward_nv_traps(vcpu))
-		return kvm_inject_nested_sync(vcpu, kvm_vcpu_get_hsr(vcpu));
-
-	/* TLB maintenance instructions*/
-	if (params->CRn == 0b1000)
-		ret = emulate_tlbi(vcpu, params);
-	/* Address Translation instructions */
-	else if (params->CRn == 0b0111 && params->CRm == 0b1000)
-		ret = emulate_at(vcpu, params);
-
-	if (ret)
-		kvm_skip_instr(vcpu, kvm_vcpu_trap_il_is32bit(vcpu));
-
-	return ret;
 }
 
 static void reset_sys_reg_descs(struct kvm_vcpu *vcpu,
@@ -2696,6 +2682,7 @@ void kvm_sys_reg_table_init(void)
 	BUG_ON(check_sysreg_table(cp15_regs, ARRAY_SIZE(cp15_regs)));
 	BUG_ON(check_sysreg_table(cp15_64_regs, ARRAY_SIZE(cp15_64_regs)));
 	BUG_ON(check_sysreg_table(invariant_sys_regs, ARRAY_SIZE(invariant_sys_regs)));
+	BUG_ON(check_sysreg_table(sys_insn_descs, ARRAY_SIZE(sys_insn_descs)));
 
 	/* We abuse the reset function to overwrite the table itself. */
 	for (i = 0; i < ARRAY_SIZE(invariant_sys_regs); i++)
