@@ -30,6 +30,7 @@
 #include <asm/kvm_asm.h>
 #include <asm/kvm_emulate.h>
 #include <asm/virt.h>
+#include <asm/kvm_rmap.h>
 
 #include "trace.h"
 
@@ -1430,6 +1431,14 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 	if (ret)
 		return ret;
 
+	/*
+	 * We need at most one page for rmap descriptor if the current one is
+	 * full.
+	 */
+	ret = mmu_topup_memory_cache(&vcpu->arch.mmu_rmap_list_desc_cache, 1, 1);
+	if (ret)
+		return ret;
+
 	mmu_seq = vcpu->kvm->mmu_notifier_seq;
 	/*
 	 * Ensure the read of mmu_notifier_seq happens before we call
@@ -1837,6 +1846,7 @@ int kvm_test_age_hva(struct kvm *kvm, unsigned long hva)
 void kvm_mmu_free_memory_caches(struct kvm_vcpu *vcpu)
 {
 	mmu_free_memory_cache(&vcpu->arch.mmu_page_cache);
+	mmu_free_memory_cache(&vcpu->arch.mmu_rmap_list_desc_cache);
 }
 
 phys_addr_t kvm_mmu_get_httbr(void)
@@ -2050,11 +2060,23 @@ out:
 void kvm_arch_free_memslot(struct kvm *kvm, struct kvm_memory_slot *free,
 			   struct kvm_memory_slot *dont)
 {
+	if (!dont || free->arch.rmap != dont->arch.rmap) {
+		kvfree(free->arch.rmap);
+		free->arch.rmap = NULL;
+	}
 }
 
 int kvm_arch_create_memslot(struct kvm *kvm, struct kvm_memory_slot *slot,
 			    unsigned long npages)
 {
+	slot->arch.rmap = kvzalloc(npages * sizeof(*slot->arch.rmap),
+				   GFP_KERNEL);
+	if (!slot->arch.rmap) {
+		kvfree(slot->arch.rmap);
+		slot->arch.rmap = NULL;
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 

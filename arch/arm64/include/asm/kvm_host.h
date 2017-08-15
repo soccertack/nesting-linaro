@@ -367,6 +367,8 @@ struct kvm_vcpu_arch {
 
 	/* VTTBR value used by the hardware on next switch */
 	u64 hw_vttbr;
+
+	struct kvm_mmu_memory_cache mmu_rmap_list_desc_cache;
 };
 
 #define vcpu_gp_regs(v)		(&(v)->arch.ctxt.gp_regs)
