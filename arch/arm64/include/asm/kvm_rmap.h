@@ -64,3 +64,5 @@ struct kvm_rmap_head *rmap_get_next(struct rmap_iterator *iter);
 #define for_each_rmap_head(_rmap_head_, _iter_, _curr_)			\
 	for (_curr_ = rmap_get_first(_rmap_head_, _iter_);		\
 	     _curr_; _curr_ = rmap_get_next(_iter_))
+
+struct kvm_rmap_head *gfn_to_rmap(struct kvm *kvm, gfn_t gfn);
