@@ -151,6 +151,7 @@ struct kvm_sync_regs {
 };
 
 struct kvm_arch_memory_slot {
+	struct kvm_rmap_head *rmap;
 };
 
 /* If you need to interpret the index values, here is the key: */
