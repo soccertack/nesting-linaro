@@ -171,7 +171,7 @@ static int handle_tlbi_pv(struct kvm_vcpu *vcpu)
 		BUG();
 	}
 
-	return emulate_sys_instr(vcpu, &p);
+	return __emulate_sys_instr(vcpu, &p, false);
 }
 
 /*

@@ -2116,10 +2116,29 @@ static const struct sys_reg_desc *find_reg(const struct sys_reg_params *params,
 		       match_sys_reg);
 }
 
+static void __perform_access(struct kvm_vcpu *vcpu,
+			   struct sys_reg_params *params,
+			   const struct sys_reg_desc *r,
+			   bool skip_instr)
+{
+	/*
+	 * Not having an accessor means that we have configured a trap
+	 * that we don't know how to handle. This certainly qualifies
+	 * as a gross bug that should be fixed right away.
+	 */
+	BUG_ON(!r->access);
+
+	/* Skip instruction if instructed so */
+	if (likely(r->access(vcpu, params, r)) && skip_instr)
+		kvm_skip_instr(vcpu, kvm_vcpu_trap_il_is32bit(vcpu));
+}
+
 static void perform_access(struct kvm_vcpu *vcpu,
 			   struct sys_reg_params *params,
 			   const struct sys_reg_desc *r)
 {
+	__perform_access(vcpu, params, r, true);
+#if 0
 	/*
 	 * Not having an accessor means that we have configured a trap
 	 * that we don't know how to handle. This certainly qualifies
@@ -2138,15 +2157,35 @@ static void perform_access(struct kvm_vcpu *vcpu,
 	/* Skip instruction if instructed so */
 	if (likely(r->access(vcpu, params, r)))
 		kvm_skip_instr(vcpu, kvm_vcpu_trap_il_is32bit(vcpu));
+#endif
 }
 
-#ifndef CONFIG_KVM_ARM_NESTED_PV
-static int emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p)
-#else
-int emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p)
-#endif
+int __emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p, bool skip_instr)
 {
+	const struct sys_reg_desc *r;
 
+	/* Search from the system instruction table. */
+	r = find_reg(p, sys_insn_descs, ARRAY_SIZE(sys_insn_descs));
+
+	if (likely(r)) {
+		if (r->forward_trap && unlikely(r->forward_trap(vcpu)))
+			return 1;
+
+		__perform_access(vcpu, p, r, skip_instr);
+	} else {
+		kvm_err("Unsupported guest sys instruction at: %lx\n",
+			*vcpu_pc(vcpu));
+		print_sys_reg_instr(p);
+		kvm_inject_undefined(vcpu);
+	}
+	return 1;
+}
+
+static int emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p)
+{
+	return __emulate_sys_instr(vcpu, p, true);
+
+#if 0
 	const struct sys_reg_desc *r;
 
 	/* Search from the system instruction table. */
@@ -2161,6 +2200,7 @@ int emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p)
 		kvm_inject_undefined(vcpu);
 	}
 	return 1;
+#endif
 }
 
 static bool trap_dbgidr(struct kvm_vcpu *vcpu,

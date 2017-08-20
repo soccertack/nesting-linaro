@@ -149,7 +149,7 @@ const struct sys_reg_desc *find_reg_by_id(u64 id,
 	Op2(sys_reg_Op2(reg))
 
 #ifdef CONFIG_KVM_ARM_NESTED_PV
-int emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p);
+int __emulate_sys_instr(struct kvm_vcpu *vcpu, struct sys_reg_params *p, bool skip_instr);
 #endif
 
 #endif /* __ARM64_KVM_SYS_REGS_LOCAL_H__ */
