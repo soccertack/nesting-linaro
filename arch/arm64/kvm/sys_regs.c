@@ -1243,6 +1243,56 @@ static int set_raz_id_reg(struct kvm_vcpu *vcpu, const struct sys_reg_desc *rd,
 	.set_user = set_raz_id_reg,			\
 }
 
+static bool access_id_aa64mmfr0_el1(struct kvm_vcpu *v,
+			   	    struct sys_reg_params *p,
+				    const struct sys_reg_desc *r)
+{
+	u64 val;
+	u64 vtcr_tg0 = VTCR_EL2_TGRAN_FLAGS & VTCR_EL2_TG0_MASK;
+
+	if (!access_id_reg(v, p, r)) {
+		/* Just return on the write operation */
+		return false;
+	}
+
+	val = p->regval;
+	/*
+	 * Don't expose granules smaller than the host's granule to the guest.
+	 * If the guest hypervisor uses a smaller stage 2 mappings than the
+	 * host hypervisor, then creating a mapping in the shadow page
+	 * table would result in a wrong address translation.
+	 *
+	 * For example, assume that the guest uses 4K stage 2 mappings and the
+	 * host uses 16K mappings. If we create a mapping in the shadow page
+	 * table from ipa from the perspective of the guest hypervisor (i.e.
+	 * L2 pa) to pa, then it is only valid if a 16K range of L2 pa is
+	 * mapped to four continous 4K stage 2 pages in the guest hypervisor,
+	 * which is of course not guaranteed.
+	 */
+	switch (vtcr_tg0) {
+	case VTCR_EL2_TG0_64K:
+		/* 16KB granule not supported */
+		val &= ~(0xf << ID_AA64MMFR0_TGRAN16_SHIFT);
+		val |= (ID_AA64MMFR0_TGRAN16_NI << ID_AA64MMFR0_TGRAN16_SHIFT);
+		/* fall through */
+	case VTCR_EL2_TG0_16K:
+		/* 4KB granule not supported */
+		val &= ~(0xf << ID_AA64MMFR0_TGRAN4_SHIFT);
+		val |= (ID_AA64MMFR0_TGRAN4_NI << ID_AA64MMFR0_TGRAN4_SHIFT);
+		break;
+	default:
+		break;
+	}
+
+	/* Expose only 40 bits physical address range to the guest hypervisor */
+	val &= ~(0xf << ID_AA64MMFR0_PARANGE_SHIFT);
+	val |= (0x2 << ID_AA64MMFR0_PARANGE_SHIFT); /* 40 bits */
+
+	p->regval = val;
+
+	return true;
+}
+
 /*
  * Architected system registers.
  * Important: Must be sorted ascending by Op0, Op1, CRn, CRm, Op2
@@ -1304,7 +1354,11 @@ static const struct sys_reg_desc sys_reg_descs[] = {
 	/* AArch64 mappings of the AArch32 ID registers */
 	/* ID_AFR0_EL1 not exposed to guests for now */
 	ID(PFR0),	ID(PFR1),	ID(DFR0),	_ID_RAZ(1,3),
-	ID(MMFR0),	ID(MMFR1),	ID(MMFR2),	ID(MMFR3),
+
+	{ SYS_DESC(SYS_ID_MMFR0_EL1), access_id_aa64mmfr0_el1, NULL, 0, 0, \
+	  get_id_reg, set_id_reg },
+
+	/* ID(MMFR0),*/	ID(MMFR1),	ID(MMFR2),	ID(MMFR3),
 	ID(ISAR0),	ID(ISAR1),	ID(ISAR2),	ID(ISAR3),
 	ID(ISAR4),	ID(ISAR5),	ID(MMFR4),	_ID_RAZ(2,7),
 	_ID(MVFR0),	_ID(MVFR1),	_ID(MVFR2),	_ID_RAZ(3,3),
