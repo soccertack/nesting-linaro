@@ -1,0 +1,2 @@
+v1-->v2:
+Removed the unused kvm_nested_s2_init() function.
