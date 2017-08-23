@@ -1,0 +1,10 @@
+v1-->v2:
+
+- Removed an unnecessary iteration for each vcpu in kvm_nested_s2_all_vcpus_*()
+  functions and remove all_vcpus in the function names - a list of nested mmu
+  is per VM, not per vcpu.
+- Renamed kvm_nested_s2_unmap() to kvm_nested_s2_clear()
+- Renamed kvm_nested_s2_teardown() to kvm_nested_s2_free()
+
+v1-->v2:
+Removed the unused kvm_nested_s2_init() function.
