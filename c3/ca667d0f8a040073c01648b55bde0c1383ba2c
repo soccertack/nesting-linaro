@@ -1,0 +1,3 @@
+v1-->v2:
+Align L1 IPA as well as L2 IPA in transparent_hugepage_adjust(). We will use
+both IPAs to create a rmap entry.
