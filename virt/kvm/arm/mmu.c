@@ -164,13 +164,23 @@ static void mmu_free_memory_cache(struct kvm_mmu_memory_cache *mc)
 		free_page((unsigned long)mc->objects[--mc->nobjs]);
 }
 
-static void *mmu_memory_cache_alloc(struct kvm_mmu_memory_cache *mc)
+void *kvm_mmu_memory_cache_alloc(struct kvm_mmu_memory_cache *mc)
 {
 	void *p;
 
 	BUG_ON(!mc || !mc->nobjs);
 	p = mc->objects[--mc->nobjs];
 	return p;
+}
+
+struct rmap_list_desc *kvm_mmu_alloc_rmap_list_desc(struct kvm_vcpu *vcpu)
+{
+	return kvm_mmu_memory_cache_alloc(&vcpu->arch.mmu_rmap_list_desc_cache);
+}
+
+void kvm_mmu_free_rmap_list_desc(struct rmap_list_desc *rmap_list_desc)
+{
+	free_page((unsigned long)rmap_list_desc);
 }
 
 static void clear_stage2_pgd_entry(struct kvm_s2_mmu *mmu,
@@ -943,7 +953,7 @@ static pud_t *stage2_get_pud(struct kvm_s2_mmu *mmu,
 	if (WARN_ON(stage2_pgd_none(*pgd))) {
 		if (!cache)
 			return NULL;
-		pud = mmu_memory_cache_alloc(cache);
+		pud = kvm_mmu_memory_cache_alloc(cache);
 		stage2_pgd_populate(pgd, pud);
 		get_page(virt_to_page(pgd));
 	}
@@ -965,7 +975,7 @@ static pmd_t *stage2_get_pmd(struct kvm_s2_mmu *mmu,
 	if (stage2_pud_none(*pud)) {
 		if (!cache)
 			return NULL;
-		pmd = mmu_memory_cache_alloc(cache);
+		pmd = kvm_mmu_memory_cache_alloc(cache);
 		stage2_pud_populate(pud, pmd);
 		get_page(virt_to_page(pud));
 	}
@@ -1038,7 +1048,7 @@ static int stage2_set_pte(struct kvm_s2_mmu *mmu,
 	if (pmd_none(*pmd)) {
 		if (!cache)
 			return 0; /* ignore calls from kvm_set_spte_hva */
-		pte = mmu_memory_cache_alloc(cache);
+		pte = kvm_mmu_memory_cache_alloc(cache);
 		pmd_populate_kernel(NULL, pmd, pte);
 		get_page(virt_to_page(pmd));
 	}
