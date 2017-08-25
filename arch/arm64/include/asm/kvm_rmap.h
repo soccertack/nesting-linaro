@@ -46,3 +46,21 @@ void clear_rmap_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		    unsigned long table_addr, phys_addr_t addr);
 void clear_rmap_pmd(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		    unsigned long table_addr, phys_addr_t addr);
+
+/*
+ * Used by the following functions to iterate through the rmap entries linked
+ * by a rmap head.
+ */
+struct rmap_iterator {
+	struct rmap_list_desc *desc;	/* pointer to the current descriptor */
+	int pos;			/* index of the rmap entry in desc */
+};
+
+struct kvm_rmap_head *rmap_get_first(struct kvm_rmap_head *rmap_head,
+			   struct rmap_iterator *iter);
+
+struct kvm_rmap_head *rmap_get_next(struct rmap_iterator *iter);
+
+#define for_each_rmap_head(_rmap_head_, _iter_, _curr_)			\
+	for (_curr_ = rmap_get_first(_rmap_head_, _iter_);		\
+	     _curr_; _curr_ = rmap_get_next(_iter_))
