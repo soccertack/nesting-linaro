@@ -41,3 +41,8 @@ void kvm_mmu_free_rmap_list_desc(struct rmap_list_desc *rmap_list_desc);
 
 void cache_ipa(unsigned long table_addr, phys_addr_t fault_ipa, phys_addr_t ipa,
 	       bool hugepage);
+
+void clear_rmap_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
+		    unsigned long table_addr, phys_addr_t addr);
+void clear_rmap_pmd(struct kvm *kvm, struct kvm_s2_mmu *mmu,
+		    unsigned long table_addr, phys_addr_t addr);

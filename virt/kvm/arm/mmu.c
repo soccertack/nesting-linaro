@@ -269,6 +269,8 @@ static void unmap_stage2_ptes(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		if (!pte_none(*pte)) {
 			pte_t old_pte = *pte;
 
+			clear_rmap_pte(kvm, mmu, (unsigned long)pte, addr);
+
 			kvm_set_pte(pte, __pte(0));
 			kvm_tlb_flush_vmid_ipa(mmu, addr);
 
@@ -296,6 +298,8 @@ static void unmap_stage2_pmds(struct kvm *kvm, struct kvm_s2_mmu *mmu, pud_t *pu
 		if (!pmd_none(*pmd)) {
 			if (pmd_thp_or_huge(*pmd)) {
 				pmd_t old_pmd = *pmd;
+
+				clear_rmap_pmd(kvm, mmu, (unsigned long)pmd, addr);
 
 				pmd_clear(pmd);
 				kvm_tlb_flush_vmid_ipa(mmu, addr);

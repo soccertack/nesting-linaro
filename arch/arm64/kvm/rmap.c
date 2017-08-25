@@ -1,6 +1,20 @@
 #include <asm/kvm_rmap.h>
 #include <asm/kvm_mmu.h>
 
+static struct kvm_rmap_head *gfn_to_rmap(struct kvm *kvm, gfn_t gfn)
+{
+	struct kvm_memory_slot *slot = gfn_to_memslot(kvm, gfn);
+	unsigned long idx;
+
+	if (!slot) {
+		WARN(1, "Can't access the reverse mapping table.\n");
+		return NULL;
+	}
+
+	idx = gfn - slot->base_gfn;
+	return &slot->arch.rmap[idx];
+}
+
 /* Return a pointer to an entry, where we cache L1 IPA, for a given L2 IPA */
 static unsigned long *get_l1_ipa_entry(unsigned long table_addr,
 				       phys_addr_t fault_addr, bool hugepage)
@@ -28,6 +42,68 @@ void cache_ipa(unsigned long table_addr, phys_addr_t fault_ipa, phys_addr_t ipa,
 
 	l1_ipa_entry = get_l1_ipa_entry(table_addr, fault_ipa, hugepage);
 	*l1_ipa_entry = ipa;
+}
+
+static struct kvm_rmap_head *search_rmap_entry(struct kvm *kvm,
+					       unsigned long l1_ipa,
+					       unsigned long l2_ipa)
+{
+	struct kvm_rmap_head *rmap_head, *rmap_curr;
+	struct rmap_iterator iter;
+
+	rmap_head = gfn_to_rmap(kvm, gpa_to_gfn(l1_ipa));
+
+	for_each_rmap_head(rmap_head, &iter, rmap_curr) {
+		if (rmap_curr->val == l2_ipa)
+			return rmap_curr;
+	}
+
+	return NULL;
+}
+
+/**
+ * clear_rmap -- Remove rmap entry and clear a cached 'L2 IPA->L1 IPA' mapping
+ *
+ * When unmapping a page/block from a shadow stage-2 page table, we also
+ * need to update rmap information. First we remove the rmap entry
+ * and then clear the cached L1 IPA.
+ */
+static void clear_rmap(struct kvm *kvm, struct kvm_s2_mmu *mmu,
+		       unsigned long table_addr, phys_addr_t addr,
+		       bool hugepage)
+{
+	unsigned long *l1_ipa_entry;
+	unsigned long l1_ipa, l2_ipa;
+	struct kvm_rmap_head *rmap_curr;
+
+	/* Do nothing if this is not a nested-mmu */
+	if (mmu == &kvm->arch.mmu)
+		return;
+
+	l1_ipa_entry = get_l1_ipa_entry(table_addr, addr, hugepage);
+	l1_ipa = *l1_ipa_entry;
+	l2_ipa = addr;
+
+	/* remove rmap entry */
+	rmap_curr = search_rmap_entry(kvm, l1_ipa, l2_ipa);
+	if (rmap_curr)
+		kvm_rmap_remove(kvm, rmap_curr, gpa_to_gfn(l1_ipa));
+
+	/* clear cached L1 IPA */
+	*l1_ipa_entry = 0;
+}
+
+
+void clear_rmap_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
+		    unsigned long table_addr, phys_addr_t addr)
+{
+	clear_rmap(kvm, mmu, table_addr, addr, false);
+}
+
+void clear_rmap_pmd(struct kvm *kvm, struct kvm_s2_mmu *mmu,
+		    unsigned long table_addr, phys_addr_t addr)
+{
+	clear_rmap(kvm, mmu, table_addr, addr, true);
 }
 
 static void set_rmap_entry(struct kvm_rmap_head *rmap_entry,
@@ -169,20 +245,6 @@ static void rmap_list_remove(struct kvm_rmap_head *rmap_curr,
 	}
 }
 
-static struct kvm_rmap_head *gfn_to_rmap(struct kvm *kvm, gfn_t gfn)
-{
-	struct kvm_memory_slot *slot = gfn_to_memslot(kvm, gfn);
-	unsigned long idx;
-
-	if (!slot) {
-		WARN(1, "Can't access the reverse mapping table.\n");
-		return NULL;
-	}
-
-	idx = gfn - slot->base_gfn;
-	return &slot->arch.rmap[idx];
-}
-
 /**
  * rmap_add - Add a l2_ipa to l1_ipa mapping into the rmap table
  * @vcpu:	the VCPU pointer
@@ -239,4 +301,3 @@ void kvm_rmap_remove(struct kvm *kvm, struct kvm_rmap_head *rmap_curr,
 
 	rmap_list_remove(rmap_curr, rmap_head);
 }
-
