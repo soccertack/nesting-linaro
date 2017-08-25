@@ -38,3 +38,6 @@ void kvm_rmap_remove(struct kvm *kvm, struct kvm_rmap_head *rmap_curr,
 
 struct rmap_list_desc *kvm_mmu_alloc_rmap_list_desc(struct kvm_vcpu *vcpu);
 void kvm_mmu_free_rmap_list_desc(struct rmap_list_desc *rmap_list_desc);
+
+void cache_ipa(unsigned long table_addr, phys_addr_t fault_ipa, phys_addr_t ipa,
+	       bool hugepage);

@@ -1,6 +1,35 @@
 #include <asm/kvm_rmap.h>
 #include <asm/kvm_mmu.h>
 
+/* Return a pointer to an entry, where we cache L1 IPA, for a given L2 IPA */
+static unsigned long *get_l1_ipa_entry(unsigned long table_addr,
+				       phys_addr_t fault_addr, bool hugepage)
+{
+	struct page *last_level_table;
+	int idx;
+	unsigned long *l1_ipas;
+
+	if (hugepage)
+		idx = pmd_index(fault_addr);
+	else
+		idx = pte_index(fault_addr);
+
+	last_level_table = pfn_to_page(__pa(table_addr) >> PAGE_SHIFT);
+	l1_ipas = (unsigned long *)page_private(last_level_table);
+
+	return &l1_ipas[idx];
+}
+
+/* Cache L2 IPA to L1 IPA mapping */
+void cache_ipa(unsigned long table_addr, phys_addr_t fault_ipa, phys_addr_t ipa,
+	       bool hugepage)
+{
+	unsigned long *l1_ipa_entry;
+
+	l1_ipa_entry = get_l1_ipa_entry(table_addr, fault_ipa, hugepage);
+	*l1_ipa_entry = ipa;
+}
+
 static void set_rmap_entry(struct kvm_rmap_head *rmap_entry,
 			struct kvm_s2_mmu *mmu, gpa_t gpa, int last_level)
 {
