@@ -301,3 +301,62 @@ void kvm_rmap_remove(struct kvm *kvm, struct kvm_rmap_head *rmap_curr,
 
 	rmap_list_remove(rmap_curr, rmap_head);
 }
+
+/*
+ * Iteration must be started by this function. This should also be used after
+ * removing rmap entries from the rmap link because in such cases the
+ * information in the itererator may not be valid.
+ *
+ * Returns kvm_rmap_head pointer if found, NULL otherwise.
+ */
+struct kvm_rmap_head *rmap_get_first(struct kvm_rmap_head *rmap_head,
+			   struct rmap_iterator *iter)
+{
+	struct kvm_rmap_head *head;
+
+	if (!rmap_head->val)
+		return NULL;
+
+	if (!(rmap_head->val & 1)) {
+		iter->desc = NULL;
+		return rmap_head;
+	}
+
+	iter->desc = (struct rmap_list_desc *)(rmap_head->val & ~1ul);
+	iter->pos = 0;
+	head = &iter->desc->rmap_entries[iter->pos];
+
+	return head;
+}
+
+/*
+ * Must be used with a valid iterator: e.g. after rmap_get_first().
+ *
+ * Returns kvm_rmap_head pointer if found, NULL otherwise.
+ */
+struct kvm_rmap_head *rmap_get_next(struct rmap_iterator *iter)
+{
+	struct kvm_rmap_head *rmap_head;
+
+	if (iter->desc) {
+		if (iter->pos < RMAP_LIST_MAX - 1) {
+			++iter->pos;
+			rmap_head = &iter->desc->rmap_entries[iter->pos];
+			if (rmap_head->val)
+				goto out;
+		}
+
+		iter->desc = iter->desc->more;
+
+		if (iter->desc) {
+			iter->pos = 0;
+			/* desc->rmap_entries[0] cannot be NULL */
+			rmap_head = &iter->desc->rmap_entries[iter->pos];
+			goto out;
+		}
+	}
+
+	return NULL;
+out:
+	return rmap_head;
+}
