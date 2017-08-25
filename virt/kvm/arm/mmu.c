@@ -1885,6 +1885,8 @@ int kvm_unmap_hva_range(struct kvm *kvm,
 static int kvm_set_spte_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data)
 {
 	pte_t *pte = (pte_t *)data;
+	struct kvm_rmap_head *rmap_head, *rmap_curr;
+	struct rmap_iterator iter;
 
 	WARN_ON(size != PAGE_SIZE);
 	/*
@@ -1895,7 +1897,15 @@ static int kvm_set_spte_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data
 	 * through this calling path.
 	 */
 	stage2_set_pte(kvm, &kvm->arch.mmu, NULL, gpa, 0, pte, 0, NULL);
-	kvm_nested_s2_clear(kvm);
+
+	rmap_head = gfn_to_rmap(kvm, gpa_to_gfn(gpa));
+	if (!rmap_head)
+		return 0;
+
+	for_each_rmap_head(rmap_head, &iter, rmap_curr)
+		stage2_set_pte(kvm, rmap_curr->mmu, NULL, rmap_curr->val, gpa,
+			       pte, 0, NULL);
+
 	return 0;
 }
 
