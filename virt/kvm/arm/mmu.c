@@ -197,9 +197,21 @@ static void clear_stage2_pud_entry(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 				   pud_t *pud, phys_addr_t addr)
 {
 	pmd_t *pmd_table __maybe_unused = stage2_pmd_offset(pud, 0);
+	unsigned long *l1_ipas;
 	VM_BUG_ON(stage2_pud_huge(*pud));
 	stage2_pud_clear(pud);
 	kvm_tlb_flush_vmid_ipa(mmu, addr);
+
+	/* If this is a shadow page table */
+	if (mmu !=  &kvm->arch.mmu) {
+		struct page *page;
+
+		page = pfn_to_page(__pa(pmd_table) >> PAGE_SHIFT);
+		l1_ipas = (unsigned long *)page_private(page);
+		free_page((unsigned long)l1_ipas);
+		put_page(virt_to_page(l1_ipas));
+	}
+
 	stage2_pmd_free(pmd_table);
 	put_page(virt_to_page(pud));
 }
@@ -208,9 +220,20 @@ static void clear_stage2_pmd_entry(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 				   pmd_t *pmd, phys_addr_t addr)
 {
 	pte_t *pte_table = pte_offset_kernel(pmd, 0);
+	unsigned long *l1_ipas;
 	VM_BUG_ON(pmd_thp_or_huge(*pmd));
 	pmd_clear(pmd);
 	kvm_tlb_flush_vmid_ipa(mmu, addr);
+
+	/* If this is a shadow page table */
+	if (mmu !=  &kvm->arch.mmu) {
+		struct page *page;
+
+		page = pfn_to_page(__pa(pte_table) >> PAGE_SHIFT);
+		l1_ipas = (unsigned long*) page_private(page);
+		free_page((unsigned long)l1_ipas);
+		put_page(virt_to_page(l1_ipas));
+	}
 	pte_free_kernel(NULL, pte_table);
 	put_page(virt_to_page(pmd));
 }
@@ -967,6 +990,7 @@ static pmd_t *stage2_get_pmd(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 {
 	pud_t *pud;
 	pmd_t *pmd;
+	unsigned long *l1_ipas;
 
 	pud = stage2_get_pud(mmu, cache, addr);
 	if (!pud)
@@ -978,6 +1002,13 @@ static pmd_t *stage2_get_pmd(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		pmd = kvm_mmu_memory_cache_alloc(cache);
 		stage2_pud_populate(pud, pmd);
 		get_page(virt_to_page(pud));
+
+		/* If this is a shadow page table, (for that we need more info) */
+		if (mmu != &kvm->arch.mmu) {
+			l1_ipas = kvm_mmu_memory_cache_alloc(cache);
+			get_page(virt_to_page(l1_ipas));
+			set_page_private(virt_to_page(pmd), (unsigned long)l1_ipas);
+		}
 	}
 
 	return stage2_pmd_offset(pud, addr);
@@ -1022,6 +1053,7 @@ static int stage2_set_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 {
 	pmd_t *pmd;
 	pte_t *pte, old_pte;
+	unsigned long *l1_ipas;
 	bool iomap = flags & KVM_S2PTE_FLAG_IS_IOMAP;
 	bool logging_active = flags & KVM_S2_FLAG_LOGGING_ACTIVE;
 
@@ -1049,8 +1081,16 @@ static int stage2_set_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		if (!cache)
 			return 0; /* ignore calls from kvm_set_spte_hva */
 		pte = kvm_mmu_memory_cache_alloc(cache);
+
 		pmd_populate_kernel(NULL, pmd, pte);
 		get_page(virt_to_page(pmd));
+
+		/* If this is a shadow page table, (for that we need more info) */
+		if (1) {
+			l1_ipas = kvm_mmu_memory_cache_alloc(cache);
+			get_page(virt_to_page(l1_ipas));
+			set_page_private(virt_to_page(pte), (unsigned long)l1_ipas);
+		}
 	}
 
 	pte = pte_offset_kernel(pmd, addr);
@@ -1435,7 +1475,7 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 	}
 	up_read(&current->mm->mmap_sem);
 
-	/* We need minimum second+third level pages */
+	/* We need minimum second+third level pages + two more pages to cache mappings */
 	ret = mmu_topup_memory_cache(memcache, KVM_MMU_CACHE_MIN_PAGES,
 				     KVM_NR_MEM_OBJS);
 	if (ret)

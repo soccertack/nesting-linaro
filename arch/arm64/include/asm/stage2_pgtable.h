@@ -66,9 +66,9 @@
 
 /*
  * KVM_MMU_CACHE_MIN_PAGES is the number of stage2 page table translation
- * levels in addition to the PGD.
+ * levels in addition to the PGD. We need two more pages for gfns.
  */
-#define KVM_MMU_CACHE_MIN_PAGES		(STAGE2_PGTABLE_LEVELS - 1)
+#define KVM_MMU_CACHE_MIN_PAGES		(STAGE2_PGTABLE_LEVELS - 1 + 2)
 
 
 #if STAGE2_PGTABLE_LEVELS > 3
