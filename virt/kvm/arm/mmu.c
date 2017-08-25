@@ -1920,48 +1920,92 @@ void kvm_set_spte_hva(struct kvm *kvm, unsigned long hva, pte_t pte)
 	handle_hva_to_gpa(kvm, hva, end, &kvm_set_spte_handler, &stage2_pte);
 }
 
-static int kvm_age_hva_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data)
+static int handle_nested_s2(struct kvm *kvm, gpa_t gpa, u64 size,
+			    int (*handler)(struct kvm *kvm,
+					  struct kvm_s2_mmu *mmu,
+					  gpa_t gpa, u64 size, void *data),
+			    void *data)
+{
+	struct kvm_rmap_head *rmap_head, *rmap_curr;
+	struct rmap_iterator iter;
+	int ret = 0;
+
+	rmap_head = gfn_to_rmap(kvm, gpa_to_gfn(gpa));
+	if (!rmap_head)
+		return ret;
+
+	for_each_rmap_head(rmap_head, &iter, rmap_curr)
+		ret |= handler(kvm, rmap_curr->mmu, rmap_curr->val, size, data);
+
+	return ret;
+}
+
+static int __kvm_age_hva_handler(struct kvm *kvm, struct kvm_s2_mmu *mmu,
+				 gpa_t gpa, u64 size, void *data)
 {
 	pmd_t *pmd;
 	pte_t *pte;
 
 	WARN_ON(size != PAGE_SIZE && size != PMD_SIZE);
-	pmd = stage2_get_pmd(kvm, &kvm->arch.mmu, NULL, gpa);
+
+	pmd = stage2_get_pmd(kvm, mmu, NULL, gpa);
+
 	if (!pmd || pmd_none(*pmd))	/* Nothing there */
 		return 0;
 
-	if (pmd_thp_or_huge(*pmd))	/* THP, HugeTLB */
+	if (pmd_thp_or_huge(*pmd))		/* THP, HugeTLB */
 		return stage2_pmdp_test_and_clear_young(pmd);
 
 	pte = pte_offset_kernel(pmd, gpa);
 	if (pte_none(*pte))
 		return 0;
 
-	/* TODO: Handle nested_mmu structures here as well */
-
 	return stage2_ptep_test_and_clear_young(pte);
 }
 
-static int kvm_test_age_hva_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data)
+static int kvm_age_hva_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data)
+{
+
+	int young;
+
+	young = __kvm_age_hva_handler(kvm, &kvm->arch.mmu, gpa, size, data);
+
+	young |= handle_nested_s2(kvm, gpa, size, __kvm_age_hva_handler, data);
+
+	return young;
+}
+
+static int __kvm_test_age_hva_handler(struct kvm *kvm, struct kvm_s2_mmu *mmu, gpa_t gpa, u64 size, void *data)
 {
 	pmd_t *pmd;
 	pte_t *pte;
 
 	WARN_ON(size != PAGE_SIZE && size != PMD_SIZE);
-	pmd = stage2_get_pmd(kvm, &kvm->arch.mmu, NULL, gpa);
+
+	pmd = stage2_get_pmd(kvm, mmu, NULL, gpa);
+
 	if (!pmd || pmd_none(*pmd))	/* Nothing there */
 		return 0;
 
-	if (pmd_thp_or_huge(*pmd))		/* THP, HugeTLB */
+	if (pmd_thp_or_huge(*pmd))	/* THP, HugeTLB */
 		return pmd_young(*pmd);
 
 	pte = pte_offset_kernel(pmd, gpa);
 	if (!pte_none(*pte))		/* Just a page... */
 		return pte_young(*pte);
 
-	/* TODO: Handle nested_mmu structures here as well */
-
 	return 0;
+}
+
+static int kvm_test_age_hva_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data)
+{
+	int young;
+
+	young = __kvm_test_age_hva_handler(kvm, &kvm->arch.mmu, gpa, size, data);
+
+	young |= handle_nested_s2(kvm, gpa, size, __kvm_test_age_hva_handler, data);
+
+	return young;
 }
 
 int kvm_age_hva(struct kvm *kvm, unsigned long start, unsigned long end)
