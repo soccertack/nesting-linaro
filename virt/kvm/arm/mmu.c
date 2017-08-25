@@ -1043,8 +1043,10 @@ static int stage2_set_pmd_huge(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		get_page(virt_to_page(pmd));
 	}
 
-	if (mmu != &kvm->arch.mmu)
+	if (mmu != &kvm->arch.mmu) {
 		kvm_rmap_add_pmd(kvm, mmu, fault_ipa, ipa, rmap_cache);
+		cache_ipa((unsigned long)pmd, fault_ipa, ipa, true);
+	}
 
 	kvm_set_pmd(pmd, *new_pmd);
 	return 0;
@@ -1112,8 +1114,10 @@ static int stage2_set_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		get_page(virt_to_page(pte));
 	}
 
-	if (rmap_cache && (mmu != &kvm->arch.mmu))
+	if (rmap_cache && (mmu != &kvm->arch.mmu)) {
 		kvm_rmap_add_pte(kvm, mmu, addr, ipa, rmap_cache);
+		cache_ipa((unsigned long)pte, addr, ipa, false);
+	}
 
 	kvm_set_pte(pte, *new_pte);
 	return 0;
