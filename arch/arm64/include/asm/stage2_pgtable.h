@@ -66,9 +66,13 @@
 
 /*
  * KVM_MMU_CACHE_MIN_PAGES is the number of stage2 page table translation
- * levels in addition to the PGD.
+ * levels in addition to the PGD. We also need one more page per each level
+ * to cache L2 IPA to L1 IPA mappings for rmap.
+ *
+ * TODO: '+ 2' should be changed to ') * 2' and need to be tested with different
+ * number of page table levels.
  */
-#define KVM_MMU_CACHE_MIN_PAGES		(STAGE2_PGTABLE_LEVELS - 1)
+#define KVM_MMU_CACHE_MIN_PAGES		(STAGE2_PGTABLE_LEVELS - 1 + 2)
 
 
 #if STAGE2_PGTABLE_LEVELS > 3
