@@ -1015,11 +1015,13 @@ static pmd_t *stage2_get_pmd(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 
 static int stage2_set_pmd_huge(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 			       struct kvm_mmu_memory_cache *cache,
-			       phys_addr_t addr, const pmd_t *new_pmd)
+			       phys_addr_t fault_ipa, phys_addr_t ipa,
+			       const pmd_t *new_pmd,
+			       struct kvm_mmu_memory_cache *rmap_cache)
 {
 	pmd_t *pmd, old_pmd;
 
-	pmd = stage2_get_pmd(kvm, mmu, cache, addr);
+	pmd = stage2_get_pmd(kvm, mmu, cache, fault_ipa);
 	VM_BUG_ON(!pmd);
 
 	/*
@@ -1036,10 +1038,13 @@ static int stage2_set_pmd_huge(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 	old_pmd = *pmd;
 	if (pmd_present(old_pmd)) {
 		pmd_clear(pmd);
-		kvm_tlb_flush_vmid_ipa(mmu, addr);
+		kvm_tlb_flush_vmid_ipa(mmu, fault_ipa);
 	} else {
 		get_page(virt_to_page(pmd));
 	}
+
+	if (mmu != &kvm->arch.mmu)
+		kvm_rmap_add_pmd(kvm, mmu, fault_ipa, ipa, rmap_cache);
 
 	kvm_set_pmd(pmd, *new_pmd);
 	return 0;
@@ -1047,8 +1052,9 @@ static int stage2_set_pmd_huge(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 
 static int stage2_set_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 			  struct kvm_mmu_memory_cache *cache,
-			  phys_addr_t addr, const pte_t *new_pte,
-			  unsigned long flags)
+			  phys_addr_t addr, phys_addr_t ipa,
+			  const pte_t *new_pte, unsigned long flags,
+			  struct kvm_mmu_memory_cache *rmap_cache)
 {
 	pmd_t *pmd;
 	pte_t *pte, old_pte;
@@ -1106,6 +1112,9 @@ static int stage2_set_pte(struct kvm *kvm, struct kvm_s2_mmu *mmu,
 		get_page(virt_to_page(pte));
 	}
 
+	if (rmap_cache && (mmu != &kvm->arch.mmu))
+		kvm_rmap_add_pte(kvm, mmu, addr, ipa, rmap_cache);
+
 	kvm_set_pte(pte, *new_pte);
 	return 0;
 }
@@ -1146,6 +1155,7 @@ int kvm_phys_addr_ioremap(struct kvm *kvm, phys_addr_t guest_ipa,
 	int ret = 0;
 	unsigned long pfn;
 	struct kvm_mmu_memory_cache cache = { 0, };
+	struct kvm_mmu_memory_cache rmap_cache = { 0, };
 
 	end = (guest_ipa + size + PAGE_SIZE - 1) & PAGE_MASK;
 	pfn = __phys_to_pfn(pa);
@@ -1160,9 +1170,14 @@ int kvm_phys_addr_ioremap(struct kvm *kvm, phys_addr_t guest_ipa,
 						KVM_NR_MEM_OBJS);
 		if (ret)
 			goto out;
+
+		ret = mmu_topup_memory_cache(&rmap_cache, 1, 1);
+		if (ret)
+			goto out;
+
 		spin_lock(&kvm->mmu_lock);
-		ret = stage2_set_pte(kvm, &kvm->arch.mmu, &cache, addr, &pte,
-						KVM_S2PTE_FLAG_IS_IOMAP);
+		ret = stage2_set_pte(kvm, &kvm->arch.mmu, &cache, addr, 0, &pte,
+				     KVM_S2PTE_FLAG_IS_IOMAP, &rmap_cache);
 		spin_unlock(&kvm->mmu_lock);
 		if (ret)
 			goto out;
@@ -1425,6 +1440,7 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 	bool logging_active = memslot_is_logging(memslot);
 	unsigned long flags = 0;
 	struct kvm_s2_mmu *mmu = vcpu->arch.hw_mmu;
+	struct kvm_mmu_memory_cache *rmap_cache;
 
 	write_fault = kvm_is_write_fault(vcpu);
 	if (fault_status == FSC_PERM && !write_fault) {
@@ -1538,6 +1554,7 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 	if (!hugetlb && !force_pte)
 		hugetlb = transparent_hugepage_adjust(&pfn, &ipa, &fault_ipa);
 
+	rmap_cache = &vcpu->arch.mmu_rmap_list_desc_cache;
 	if (hugetlb) {
 		pmd_t new_pmd = pfn_pmd(pfn, mem_type);
 		new_pmd = pmd_mkhuge(new_pmd);
@@ -1546,8 +1563,8 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 			kvm_set_pfn_dirty(pfn);
 		}
 		coherent_cache_guest_page(vcpu, pfn, PMD_SIZE);
-		ret = stage2_set_pmd_huge(kvm, mmu, memcache, fault_ipa,
-					  &new_pmd);
+		ret = stage2_set_pmd_huge(kvm, mmu, memcache, fault_ipa, ipa,
+					  &new_pmd, rmap_cache);
 	} else {
 		pte_t new_pte = pfn_pte(pfn, mem_type);
 
@@ -1557,8 +1574,8 @@ static int user_mem_abort(struct kvm_vcpu *vcpu, phys_addr_t fault_ipa,
 			mark_page_dirty(kvm, gfn);
 		}
 		coherent_cache_guest_page(vcpu, pfn, PAGE_SIZE);
-		ret = stage2_set_pte(kvm, mmu, memcache, fault_ipa, &new_pte,
-				     flags);
+		ret = stage2_set_pte(vcpu->kvm, mmu, memcache, fault_ipa, ipa,
+				     &new_pte, flags, rmap_cache);
 	}
 
 out_unlock:
@@ -1822,7 +1839,7 @@ static int kvm_set_spte_handler(struct kvm *kvm, gpa_t gpa, u64 size, void *data
 	 * therefore stage2_set_pte() never needs to clear out a huge PMD
 	 * through this calling path.
 	 */
-	stage2_set_pte(kvm, &kvm->arch.mmu, NULL, gpa, pte, 0);
+	stage2_set_pte(kvm, &kvm->arch.mmu, NULL, gpa, 0, pte, 0, NULL);
 	kvm_nested_s2_clear(kvm);
 	return 0;
 }
