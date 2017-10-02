@@ -1,0 +1,7 @@
+v1-->v2:
+- Handled different endianness between the host and the guest hypervisor
+- Decoupled the stage-2 PTW from injecting exceptions. This will come in handy
+  when we just want to walk the page table.
+- Added esr and upper_attr fields in kvm_s2_trans struct
+- Reworked pa_max() to have KVM_PHYS_SHIFT
+- Updated comment about the continuous bits
