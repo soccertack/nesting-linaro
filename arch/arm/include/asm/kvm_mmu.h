@@ -249,6 +249,10 @@ static inline void kvm_nested_s2_free(struct kvm *kvm) { }
 static inline void kvm_nested_s2_wp(struct kvm *kvm) { }
 static inline void kvm_nested_s2_clear(struct kvm *kvm) { }
 static inline void kvm_nested_s2_flush(struct kvm *kvm) { }
+static inline int kvm_inject_s2_fault(struct kvm_vcpu *vcpu, u64 esr_el2)
+{
+	return 0;
+}
 static inline int kvm_nested_mmio_ondemand(struct kvm_vcpu *vcpu,
 					   phys_addr_t fault_ipa,
 					   phys_addr_t ipa) { return 0; }
