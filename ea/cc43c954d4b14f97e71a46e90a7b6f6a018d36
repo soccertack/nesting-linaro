@@ -1,0 +1,6 @@
+v1-->v2:
+- This is a merged commit of [RFC 39/55] and [RFC 40/55].
+- Updated the commit message and comments.
+- Defer creating a new nested mmu structure until we enter the VM with stage 2
+  paging enabled, which was previously done on vttbr_el2 write operations.
+- Use the existing kvm->mmu_lock when iterating nested mmus instead of creating one.
