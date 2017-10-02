@@ -1,0 +1,4 @@
+v1-->v2:
+- Added a common function to inject s2 faults.
+- Align L1 IPA as well as L2 IPA in transparent_hugepage_adjust(). This will
+come in handy when creating a rmap entry with both IPAs.
