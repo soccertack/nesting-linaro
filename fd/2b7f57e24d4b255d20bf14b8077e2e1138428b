@@ -1,4 +1,4 @@
 v1-->v2:
 Fixed a bug that hw_vttbr was not initialized correctly in kvm_arch_vcpu_init()
 where vmid is not allocated yet. This prevented the guest from booting on 32bit
-arm.
+arm; hw_vttbr is set on each entry on aarch64, so it was fine.
