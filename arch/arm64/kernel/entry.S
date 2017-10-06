@@ -321,8 +321,8 @@ ENTRY(vectors)
 	ventry	el1_fiq_invalid			// FIQ EL1t
 	ventry	el1_error_invalid		// Error EL1t
 
-	ventry	el1_sync			// Synchronous EL1h
-	ventry	el1_irq				// IRQ EL1h
+	ventry_el2	el1_sync			// Synchronous EL1h
+	ventry_el2	el1_irq				// IRQ EL1h
 	ventry	el1_fiq_invalid			// FIQ EL1h
 	ventry	el1_error_invalid		// Error EL1h
 

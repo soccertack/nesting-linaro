@@ -132,6 +132,24 @@ lr	.req	x30		// link register
 	.endm
 
 /*
+ * Vector entry from EL2 to EL2
+ */
+	.macro ventry_el2      label
+	.align  7
+#ifdef CONFIG_PV_VHE
+	stp     x0, x1, [sp, #-16]!
+	mrs     x0, spsr_el1
+	mov     x1, #(3 << 2)
+	bic     x0, x0, x1
+	mov     x1, #CurrentEL_EL2
+	orr     x0, x0, x1
+	msr     spsr_el1, x0
+	ldp     x0, x1, [sp], #16
+#endif
+	b       \label
+	.endm
+
+/*
  * Select code when configured for BE.
  */
 #ifdef CONFIG_CPU_BIG_ENDIAN
