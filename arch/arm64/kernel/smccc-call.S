@@ -13,6 +13,7 @@
  */
 #include <linux/linkage.h>
 #include <asm/asm-offsets.h>
+#include <asm/kvm_nested_pv.h>
 
 	.macro SMCCC instr
 	.cfi_startproc
@@ -30,7 +31,7 @@
  *		  unsigned long a6, unsigned long a7, struct arm_smccc_res *res)
  */
 ENTRY(arm_smccc_smc)
-	SMCCC	smc
+	SMCCC	smc_psci_pv
 ENDPROC(arm_smccc_smc)
 
 /*

@@ -28,6 +28,10 @@
 	.macro hvc_pv imm
 	hvc	\imm
 	.endm
+
+	.macro smc_psci_pv imm
+	smc	\imm
+	.endm
 #else
 	.macro mrs_pv rt, sreg
 	/* hvc|instr|sysreg|gpreg */
@@ -58,6 +62,11 @@
 	/* hvc|instr|imm */
 	.inst	0xd4000002|(.L__hvc)
 	.endm
+
+	.macro smc_psci_pv imm
+	/* hvc|instr */
+	.inst	0xd4000002|(.L__smc_psci)
+	.endm
 #endif /* CONFIG_PV_EL2 */
 #else /* __ASSEMBLY__ */
 
@@ -85,6 +94,10 @@ asm(
 "\n"
 "	.macro hvc_pv imm\n"
 "	hvc	\\imm\n"
+"	.endm\n"
+"\n"
+"	.macro smc_psci_pv imm\n"
+"	smc	\\imm\n"
 "	.endm\n"
 );
 
@@ -123,6 +136,10 @@ PV_CONST
 "\n"
 "	.macro hvc_pv imm\n"
 "	.inst	0xd4000002|(.L__hvc)\n"
+"	.endm\n"
+"\n"
+"	.macro smc_psci_pv imm\n"
+"	.inst	0xd4000002|(.L__smc_psci)\n"
 "	.endm\n"
 );
 

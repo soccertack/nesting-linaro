@@ -19,12 +19,21 @@
  */
 
 #define PV_INSTR_SHIFT	13
+#define SMC_PV		0x0
 #define MRS_PV		0x1
 #define MSR_REG_PV	0x2
 #define MSR_IMM_PV	0x3
 #define ERET_PV		0x4
 #define TLBI_PV		0x5
 #define HVC_PV		0x6
+
+/*
+ * SMC
+ *
+ * We only have one smc call - psci.
+ * Use hvc #1 for this.
+ */
+#define SMC_PSCI	0x1
 
 /*
  * MRS and MSR
@@ -78,6 +87,7 @@
 .equ .L__eret,	(ENCODE_INSTR(ERET_PV))
 .equ .L__tlbi,	(ENCODE_INSTR(TLBI_PV))
 .equ .L__hvc,	(ENCODE_INSTR(HVC_PV))
+.equ .L__smc_psci,	(ENCODE_INSTR(SMC_PV) | HVC_IMM_SHIFT(SMC_PSCI))
 
 /* EL2 system registers */
 .equ .L__elr_el2,	(ENCODE_SYSREG(ELR_EL2))
@@ -161,6 +171,7 @@
 ".equ .L__eret,"	__stringify(ENCODE_INSTR(ERET_PV))"\n"		\
 ".equ .L__tlbi,"	__stringify(ENCODE_INSTR(TLBI_PV))"\n"		\
 ".equ .L__hvc,"		__stringify(ENCODE_INSTR(HVC_PV))"\n"		\
+".equ .L__smc_psci,"		__stringify(ENCODE_INSTR(SMC_PV) | HVC_IMM_SHIFT(SMC_PSCI))"\n"	\
 "\n"									\
 ".equ .L__elr_el2,"	__stringify(ENCODE_SYSREG(ELR_EL2))"\n"	\
 ".equ .L__spsr_el2,"	__stringify(ENCODE_SYSREG(SPSR_EL2))"\n"	\
